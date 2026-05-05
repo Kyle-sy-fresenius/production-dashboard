@@ -40,6 +40,7 @@ button{
   cursor:pointer;
 }
 
+/* layout */
 .frame{
   display:flex;
   justify-content:space-between;
@@ -54,6 +55,7 @@ button{
   padding:15px;
 }
 
+/* status circle */
 #status{
   width:120px;
   height:120px;
@@ -65,36 +67,25 @@ button{
   font-weight:bold;
 }
 
+/* chart sizing FIX */
 #chartBox{
-  width:180px;
-  height:180px;
+  width:120px;
+  height:120px;
   margin:auto;
   display:flex;
   justify-content:center;
   align-items:center;
-  flex-direction:column;
 }
 
 canvas{
-  margin:auto;
+  width:120px !important;
+  height:120px !important;
 }
-
-#trackText{margin-top:10px;font-size:14px}
 
 /* END SCREEN */
 #summary{
   display:none;
   margin-top:20px;
-}
-
-/* animation */
-.fade-number{
-  animation:fadeDown 0.35s ease;
-}
-
-@keyframes fadeDown{
-  0%{opacity:0; transform:translateY(-10px);}
-  100%{opacity:1; transform:translateY(0);}
 }
 </style>
 </head>
@@ -123,11 +114,13 @@ canvas{
 
 <div class="frame">
 
+<!-- STATUS -->
 <div class="panel">
   <div id="status">--</div>
   <div id="trackText">--</div>
 </div>
 
+<!-- CHART -->
 <div class="panel">
   <div id="chartBox">
     <canvas id="chart"></canvas>
@@ -148,6 +141,10 @@ canvas{
 </div>
 
 <script>
+const sb = supabase.createClient(
+  "https://afakpgezcpvvnvoqcthj.supabase.co",
+  "YOUR_ANON_KEY"
+);
 
 let total = 0;
 let packed = 0;
@@ -184,30 +181,26 @@ function createChart(){
 
     options:{
       plugins:{
-
-        /* ✅ CENTERED LEGEND FIX */
         legend:{
           display:true,
           position:"bottom",
           align:"center",
           labels:{
             color:"white",
-            usePointStyle:true,
-            pointStyle:"circle",
-            padding:20,
-            boxWidth:10
+            font:{size:10},
+            boxWidth:8,
+            padding:6
           }
         },
 
-        /* % LABELS INSIDE PIE */
         datalabels:{
           color:"white",
-          font:{weight:"bold",size:12},
+          font:{weight:"bold",size:10},
           formatter:(value,ctx)=>{
             let data = ctx.chart.data.datasets[0].data;
             let sum = data.reduce((a,b)=>a+b,0);
-            if(sum===0) return "0%";
-            return ((value/sum)*100).toFixed(0)+"%";
+            if(sum === 0) return "0%";
+            return ((value/sum)*100).toFixed(0) + "%";
           }
         }
       }
@@ -223,12 +216,13 @@ function add(){
   if(isNaN(v)) return;
 
   packed += v;
-  document.getElementById("addInput").value = "";
+  document.getElementById("addInput").value="";
 
   update();
+  save();
 }
 
-/* UPDATE */
+/* UPDATE UI */
 function update(){
   document.getElementById("totalShow").innerText = total;
   document.getElementById("packedShow").innerText = packed;
@@ -247,42 +241,81 @@ function update(){
   let progress = (now-start)/(end-start);
   progress = Math.max(0,Math.min(1,progress));
 
-  let expected = total*progress;
+  let expected = total * progress;
 
-  let statusBox = document.getElementById("status");
-  let trackText = document.getElementById("trackText");
+  let status = document.getElementById("status");
+  let track = document.getElementById("trackText");
 
   if(packed/total >= progress){
-    statusBox.style.background="green";
-    statusBox.innerText="On Track";
+    status.style.background="green";
+    status.innerText="On Track";
   } else {
-    statusBox.style.background="red";
-    statusBox.innerText="Behind";
+    status.style.background="red";
+    status.innerText="Behind";
   }
 
-  trackText.innerText =
+  track.innerText =
     packed >= expected
     ? "On track"
     : "Need " + Math.ceil(expected-packed) + " units";
 }
+
+/* SAVE */
+async function save(){
+  await sb.from("production_dashboard").upsert({
+    id:1,
+    total,
+    packed
+  });
+}
+
+/* REALTIME */
+sb.channel("live")
+.on("postgres_changes",
+  { event:"*", schema:"public", table:"production_dashboard" },
+  payload => {
+    if(!payload.new) return;
+
+    total = payload.new.total || 0;
+    packed = payload.new.packed || 0;
+
+    update();
+  }
+)
+.subscribe();
+
+/* 🔁 FALLBACK SYNC (fix phone issue) */
+setInterval(async () => {
+  const { data } = await sb
+    .from("production_dashboard")
+    .select("*")
+    .eq("id",1)
+    .single();
+
+  if(!data) return;
+
+  total = data.total || 0;
+  packed = data.packed || 0;
+
+  update();
+}, 5000);
 
 /* END SHIFT */
 function endShift(){
   document.getElementById("mainScreen").style.display="none";
   document.getElementById("summary").style.display="block";
 
-  let remaining = total - packed;
-  let percent = total ? ((packed/total)*100).toFixed(1) : 0;
+  const remaining = total - packed;
+  const percent = total ? ((packed/total)*100).toFixed(1) : 0;
 
   document.getElementById("summary").innerHTML = `
     <h2>Shift Complete</h2>
     <p>Packed: ${packed}</p>
-    <p>Remaining (Pushed): ${remaining}</p>
+    <p>Remaining: ${remaining}</p>
     <p>Completion: ${percent}%</p>
     <button onclick="location.reload()">Restart</button>
   `;
 }
-
 </script>
 
 </body>
