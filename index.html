@@ -2,35 +2,37 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Production Dashboard</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 body{
   margin:0;
-  font-family:Arial;
+  font-family:Arial, sans-serif;
   background:linear-gradient(to right,#4facfe,#00c6ff);
   color:white;
   text-align:center;
-  padding:30px;
+  padding:25px;
 }
 
 .card{
-  width:560px;
+  max-width:620px;
   margin:auto;
   padding:20px;
   border-radius:15px;
-  background:rgba(255,255,255,0.12);
-  backdrop-filter:blur(10px);
+  background:rgba(255,255,255,0.14);
 }
 
 input,button{
   padding:10px;
   border:none;
   border-radius:6px;
-  margin:10px;
+  margin:8px;
+  font-size:16px;
 }
 
 button{
@@ -39,10 +41,14 @@ button{
   cursor:pointer;
 }
 
+.stats{
+  font-size:22px;
+  line-height:1.6;
+}
+
 .frame{
   display:flex;
-  justify-content:space-between;
-  gap:20px;
+  gap:18px;
   margin-top:20px;
 }
 
@@ -51,40 +57,65 @@ button{
   border:2px solid white;
   border-radius:12px;
   padding:15px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
 }
 
-/* 🔥 MATCH BOTH CIRCLES EXACTLY */
 #status{
   width:120px;
   height:120px;
   border-radius:50%;
+  margin:auto;
   display:flex;
   align-items:center;
   justify-content:center;
   font-weight:bold;
 }
 
-#chartBox{
-  width:120px;
-  height:120px;
+#trackText{
+  margin-top:10px;
+  font-size:14px;
+}
+
+.chartRow{
   display:flex;
-  align-items:center;
   justify-content:center;
+  align-items:center;
+  gap:8px;
 }
 
-canvas{
-  width:120px !important;
-  height:120px !important;
+#chartBox{
+  width:160px;
+  height:160px;
 }
 
-/* summary */
-#summary{
-  display:none;
-  margin-top:20px;
+#recentAdds{
+  width:65px;
+  font-size:12px;
+  text-align:left;
+}
+
+.recentItem{
+  margin:3px 0;
+  font-weight:bold;
+}
+
+.fade{
+  opacity:0.35;
+}
+
+#debug{
+  margin-top:12px;
+  font-size:12px;
+  opacity:0.85;
+}
+
+@media(max-width:650px){
+  .frame{
+    flex-direction:column;
+  }
+
+  .panel{
+    width:auto;
+  }
 }
 </style>
 </head>
@@ -95,167 +126,290 @@ canvas{
 
 <div class="card">
 
-<div id="startScreen">
-  <input id="totalInput" type="number" placeholder="Total units">
-  <button onclick="start()">Start</button>
-</div>
-
-<div id="mainScreen" style="display:none;">
-
-<div>Total: <span id="totalShow">0</span></div>
-<div>Packed: <span id="packedShow">0</span></div>
-<div>Remaining: <span id="remainingShow">0</span></div>
-
-<input id="addInput" type="number" placeholder="Add units">
-<button onclick="add()">Add</button>
-
-<div class="frame">
-
-<div class="panel">
-  <div id="status">--</div>
-  <div id="trackText">--</div>
-</div>
-
-<div class="panel">
-  <div id="chartBox">
-    <canvas id="chart"></canvas>
+  <div id="startScreen">
+    <p>Enter total units for today:</p>
+    <input id="totalInput" type="number" placeholder="Total units">
+    <button onclick="startShift()">Start</button>
   </div>
-</div>
 
-</div>
+  <div id="mainScreen" style="display:none;">
 
-<button onclick="endShift()" style="margin-top:20px;background:#ff4d4d;color:white;">
-  End Production
-</button>
+    <div class="stats">
+      <div>Total: <span id="totalShow">0</span></div>
+      <div>Packed: <span id="packedShow">0</span></div>
+      <div>Remaining: <span id="remainingShow">0</span></div>
+    </div>
 
-</div>
+    <input id="addInput" type="number" placeholder="Add units">
+    <button onclick="addUnits()">Add</button>
 
-<div id="summary"></div>
+    <div class="frame">
+
+      <div class="panel">
+        <div id="status">--</div>
+        <div id="trackText">--</div>
+      </div>
+
+      <div class="panel">
+        <div class="chartRow">
+          <div id="chartBox">
+            <canvas id="chart"></canvas>
+          </div>
+          <div id="recentAdds"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <button style="background:#ff4d4d;color:white;margin-top:20px;" onclick="resetDashboard()">
+      Reset
+    </button>
+
+  </div>
+
+  <div id="debug">Loading...</div>
 
 </div>
 
 <script>
+const SUPABASE_URL = "https://afakpgezcpvvnvoqcthj.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFmYWtwZ2V6Y3B2dm52b3FjdGhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTY4ODYsImV4cCI6MjA5MzU3Mjg4Nn0.4sJ4VvVG09F0F5wsVlB3Z37v3oo9m0841NcaRr8bo4k";
+
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let total = 0;
 let packed = 0;
-let chart;
+let recentAdds = [];
+let chart = null;
 
-/* START */
-function start(){
-  const v = parseFloat(document.getElementById("totalInput").value);
-  if(isNaN(v) || v <= 0) return;
-
-  total = v;
-  packed = 0;
-
-  document.getElementById("startScreen").style.display="none";
-  document.getElementById("mainScreen").style.display="block";
-
-  createChart();
-  update();
+function debug(message){
+  document.getElementById("debug").innerText = message;
 }
 
-/* CHART */
+async function loadData(){
+  const { data, error } = await supabaseClient
+    .from("production_dashboard")
+    .select("*")
+    .eq("id", 1)
+    .single();
+
+  if(error){
+    console.error("LOAD ERROR:", error);
+    debug("Load error: " + error.message);
+    return;
+  }
+
+  total = Number(data.total || 0);
+  packed = Number(data.packed || 0);
+  recentAdds = Array.isArray(data.recent_adds) ? data.recent_adds : [];
+
+  if(total > 0){
+    document.getElementById("startScreen").style.display = "none";
+    document.getElementById("mainScreen").style.display = "block";
+    createChart();
+    updateScreen();
+  }else{
+    document.getElementById("startScreen").style.display = "block";
+    document.getElementById("mainScreen").style.display = "none";
+  }
+
+  updateRecentAdds();
+  debug("Loaded from Supabase");
+}
+
+async function saveData(){
+  const { error } = await supabaseClient
+    .from("production_dashboard")
+    .upsert({
+      id: 1,
+      total: total,
+      packed: packed,
+      recent_adds: recentAdds,
+      updated_at: new Date().toISOString()
+    });
+
+  if(error){
+    console.error("SAVE ERROR:", error);
+    debug("Save error: " + error.message);
+    return false;
+  }
+
+  debug("Saved to Supabase");
+  return true;
+}
+
+async function startShift(){
+  const value = Number(document.getElementById("totalInput").value);
+
+  if(!value || value <= 0){
+    debug("Enter a valid total");
+    return;
+  }
+
+  total = value;
+  packed = 0;
+  recentAdds = [];
+
+  document.getElementById("startScreen").style.display = "none";
+  document.getElementById("mainScreen").style.display = "block";
+
+  createChart();
+  updateScreen();
+  updateRecentAdds();
+
+  await saveData();
+}
+
 function createChart(){
   if(chart) return;
 
-  chart = new Chart(document.getElementById("chart"),{
-    type:"doughnut",
-
-    data:{
-      labels:["Packed","Remaining"],
-      datasets:[{
-        data:[0,total],
-        backgroundColor:["#00ff88","#ff5252"],
-        borderWidth:0
+  chart = new Chart(document.getElementById("chart"), {
+    type: "pie",
+    data: {
+      labels: ["Packed", "Remaining"],
+      datasets: [{
+        data: [0, 0],
+        backgroundColor: ["#00ff88", "#ff5252"]
       }]
     },
-
-    options:{
-      responsive:false,
-      maintainAspectRatio:false,
-      cutout:"0%",
-
-      plugins:{
-        legend:{display:false},
-        datalabels:{
-          color:"white",
-          font:{size:10,weight:"bold"},
-          formatter:(value,ctx)=>{
-            let data = ctx.chart.data.datasets[0].data;
-            let sum = data.reduce((a,b)=>a+b,0);
-            if(sum===0) return "0%";
-            return ((value/sum)*100).toFixed(0)+"%";
-          }
-        }
+    options: {
+      plugins: {
+        legend: { display: false }
       }
-    },
-
-    plugins:[ChartDataLabels]
+    }
   });
 }
 
-/* ADD */
-function add(){
-  const v = parseFloat(document.getElementById("addInput").value);
-  if(isNaN(v)) return;
+async function addUnits(){
+  const value = Number(document.getElementById("addInput").value);
 
-  packed += v;
-  document.getElementById("addInput").value="";
+  if(!value){
+    debug("Enter units to add");
+    return;
+  }
 
-  update();
+  packed += value;
+
+  recentAdds.unshift(value);
+  recentAdds = recentAdds.slice(0, 6);
+
+  document.getElementById("addInput").value = "";
+
+  updateScreen();
+  updateRecentAdds();
+
+  await saveData();
 }
 
-/* UPDATE */
-function update(){
+function updateScreen(){
   document.getElementById("totalShow").innerText = total;
   document.getElementById("packedShow").innerText = packed;
-  document.getElementById("remainingShow").innerText = Math.max(total-packed,0);
+  document.getElementById("remainingShow").innerText = Math.max(total - packed, 0);
 
-  chart.data.datasets[0].data = [
-    Math.min(packed,total),
-    Math.max(total-packed,0)
-  ];
-  chart.update();
+  if(chart){
+    chart.data.datasets[0].data = [
+      Math.min(packed, total),
+      Math.max(total - packed, 0)
+    ];
+    chart.update();
+  }
 
+  updateStatus();
+}
+
+function updateStatus(){
   const now = new Date();
-  const start = new Date(); start.setHours(8,30,0,0);
-  const end = new Date(); end.setHours(21,30,0,0);
 
-  let progress = (now-start)/(end-start);
-  progress = Math.max(0,Math.min(1,progress));
+  const startTime = new Date();
+  startTime.setHours(8,30,0,0);
 
-  let expected = total * progress;
+  const endTime = new Date();
+  endTime.setHours(21,30,0,0);
 
-  let status = document.getElementById("status");
-  let track = document.getElementById("trackText");
+  let timeProgress = (now - startTime) / (endTime - startTime);
+  timeProgress = Math.max(0, Math.min(1, timeProgress));
 
-  status.style.background = packed/total >= progress ? "green" : "red";
-  status.innerText = packed/total >= progress ? "On Track" : "Behind";
+  const progress = total > 0 ? packed / total : 0;
+  const expected = total * timeProgress;
+  const diff = expected - packed;
 
-  track.innerText =
-    packed >= expected
-    ? "On track"
-    : "Need " + Math.ceil(expected-packed) + " units";
+  const box = document.getElementById("status");
+
+  if(progress >= timeProgress){
+    box.style.background = "green";
+    box.innerText = "On Track";
+  }else if(progress >= timeProgress - 0.1){
+    box.style.background = "orange";
+    box.innerText = "Slightly Behind";
+  }else{
+    box.style.background = "red";
+    box.innerText = "Behind";
+  }
+
+  document.getElementById("trackText").innerText =
+    diff <= 0
+    ? "On track for shift pace"
+    : "Need " + Math.ceil(diff) + " units to be on track";
 }
 
-/* END SHIFT */
-function endShift(){
-  document.getElementById("mainScreen").style.display="none";
-  document.getElementById("summary").style.display="block";
+function updateRecentAdds(){
+  let html = "";
 
-  const remaining = total - packed;
-  const percent = total ? ((packed/total)*100).toFixed(1) : 0;
+  recentAdds.forEach((value, index) => {
+    const faded = index >= 3 ? "fade" : "";
+    html += `<div class="recentItem ${faded}">+${value}</div>`;
+  });
 
-  document.getElementById("summary").innerHTML = `
-    <h2>Shift Complete</h2>
-    <p>Packed: ${packed}</p>
-    <p>Remaining: ${remaining}</p>
-    <p>Completion: ${percent}%</p>
-    <button onclick="location.reload()">Restart</button>
-  `;
+  document.getElementById("recentAdds").innerHTML = html;
 }
 
+async function resetDashboard(){
+  total = 0;
+  packed = 0;
+  recentAdds = [];
+
+  updateRecentAdds();
+
+  if(chart){
+    chart.destroy();
+    chart = null;
+  }
+
+  await saveData();
+  location.reload();
+}
+
+supabaseClient
+  .channel("production-dashboard-live")
+  .on(
+    "postgres_changes",
+    { event: "*", schema: "public", table: "production_dashboard" },
+    payload => {
+      if(!payload.new) return;
+
+      total = Number(payload.new.total || 0);
+      packed = Number(payload.new.packed || 0);
+      recentAdds = Array.isArray(payload.new.recent_adds) ? payload.new.recent_adds : [];
+
+      if(total > 0){
+        document.getElementById("startScreen").style.display = "none";
+        document.getElementById("mainScreen").style.display = "block";
+        createChart();
+        updateScreen();
+      }else{
+        document.getElementById("startScreen").style.display = "block";
+        document.getElementById("mainScreen").style.display = "none";
+      }
+
+      updateRecentAdds();
+      debug("Realtime update received");
+    }
+  )
+  .subscribe(status => {
+    console.log("Realtime status:", status);
+  });
+
+loadData();
 </script>
 
 </body>
