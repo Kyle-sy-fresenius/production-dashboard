@@ -111,13 +111,13 @@ button{
 
 <div class="card">
 
-<!-- START SCREEN -->
+<!-- START -->
 <div id="startScreen">
   <input id="totalInput" type="number" placeholder="Total units">
   <button onclick="start()">Start</button>
 </div>
 
-<!-- MAIN SCREEN -->
+<!-- MAIN -->
 <div id="mainScreen" style="display:none;">
 
 <div>Total: <span id="totalShow">0</span></div>
@@ -129,12 +129,10 @@ button{
 
 <div class="frame">
 
-<!-- STATUS -->
 <div class="panel">
   <div id="statusRing">--</div>
 </div>
 
-<!-- PIE -->
 <div class="panel">
 
 <div class="legend">🟢 Packed | 🔴 Remaining</div>
@@ -155,7 +153,7 @@ button{
 
 </div>
 
-<!-- REPORT SCREEN -->
+<!-- REPORT -->
 <div id="reportScreen" style="display:none;" class="card">
 
 <h1>Shift Report</h1>
@@ -255,7 +253,7 @@ async function save(){
   });
 }
 
-/* SCREEN SWITCH */
+/* SWITCH */
 function showMain(){
   startScreen.style.display="none";
   mainScreen.style.display="block";
@@ -291,7 +289,7 @@ function createChart(){
   });
 }
 
-/* UPDATE UI */
+/* UPDATE */
 function update(){
 
   totalShow.innerText = total;
@@ -304,7 +302,6 @@ function update(){
   ];
   chart.update();
 
-  /* STATUS RING */
   const ring = document.getElementById("statusRing");
   const ratio = total ? packed/total : 0;
 
@@ -330,8 +327,21 @@ function update(){
     ).join("");
 }
 
-/* END SHIFT */
+/* END SHIFT + PASSWORD + RESET */
 function endShift(){
+
+  const password = prompt("Enter password to end production:");
+
+  const allowed = [
+    "Kyle","Sofiya","Anjali","Osama","Elamari",
+    "Elham","Krithika","Niroshan","Lokesh","Netra"
+  ];
+
+  if(!allowed.includes(password)){
+    alert("Incorrect password");
+    return;
+  }
+
   const remaining = Math.max(total - packed, 0);
   const percent = total ? ((packed / total) * 100).toFixed(1) : 0;
 
@@ -341,6 +351,37 @@ function endShift(){
 
   mainScreen.style.display="none";
   reportScreen.style.display="block";
+
+  resetAll();
+}
+
+/* RESET EVERYTHING */
+function resetAll(){
+
+  total = 0;
+  packed = 0;
+  recent = [];
+
+  totalInput.value = "";
+  addInput.value = "";
+
+  totalShow.innerText = "0";
+  packedShow.innerText = "0";
+  remainingShow.innerText = "0";
+
+  document.getElementById("recentAdds").innerHTML = "";
+
+  if(chart){
+    chart.data.datasets[0].data = [0,0];
+    chart.update();
+  }
+
+  const ring = document.getElementById("statusRing");
+  ring.innerText = "--";
+  ring.style.border = "6px solid rgba(255,255,255,0.2)";
+  ring.style.boxShadow = "0 0 20px rgba(255,255,255,0.2)";
+
+  save();
 }
 
 /* BACK */
