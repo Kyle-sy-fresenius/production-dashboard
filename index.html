@@ -172,6 +172,7 @@ let packed=0;
 let recent=[];
 let chart;
 
+const reportScreen = document.getElementById("reportScreen");
 /* LOAD */
 async function load(){
   const { data } = await sb
@@ -305,14 +306,39 @@ function update(){
 
 /* END */
 function endShift(){
-  alert(
-    "Shift Complete\n\nPacked: "+packed+
-    "\nRemaining: "+Math.max(total-packed,0)+
-    "\nCompletion: "+((packed/total)*100).toFixed(1)+"%"
-  );
+  const remaining = Math.max(total - packed, 0);
+  const percent = total ? ((packed / total) * 100).toFixed(1) : 0;
+
+  // fill report page values
+  document.getElementById("repPacked").innerText = packed;
+  document.getElementById("repRemaining").innerText = remaining;
+  document.getElementById("repPercent").innerText = percent + "%";
+
+  // switch screens
+  mainScreen.style.display = "none";
+  reportScreen.style.display = "block";
+}
+
+function backToMain(){
+  reportScreen.style.display = "none";
+  mainScreen.style.display = "block";
 }
 
 </script>
+<div id="reportScreen" style="display:none;" class="card">
 
+<h1>Shift Report</h1>
+
+<div style="font-size:18px;margin-top:20px;">
+  <div>Packed: <span id="repPacked">0</span></div>
+  <div>Remaining: <span id="repRemaining">0</span></div>
+  <div>Completion: <span id="repPercent">0%</span></div>
+</div>
+
+<button onclick="backToMain()" style="margin-top:20px;">
+  Back to Dashboard
+</button>
+
+</div>
 </body>
 </html>
