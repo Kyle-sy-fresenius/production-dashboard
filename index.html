@@ -55,13 +55,25 @@ button:hover{opacity:0.85}
   margin:10px;
 }
 
-.dashboard{
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  gap:40px;
-  margin-top:20px;
-}
+<div class="dashboard">
+
+  <div>
+    <div id="statusCircle">--</div>
+
+    <button class="danger" onclick="endProduction()">
+      End Production
+    </button>
+  </div>
+
+  <div id="chartContainer">
+    <canvas id="chart"></canvas>
+  </div>
+
+</div>
+
+<div id="predictionText" style="margin-top:15px; font-size:14px;">
+  --
+</div>
 
 #chartContainer{width:200px;}
 
@@ -231,7 +243,45 @@ function updateAll(){
     box.innerText="Behind";
   }
 
- 
+ updatePrediction();
+}
+
+  function updatePrediction(){
+
+  if(total === 0 || packed === 0){
+    document.getElementById("predictionText").innerText = "--";
+    return;
+  }
+
+  const now = new Date();
+
+  // Look at last 1 hour
+  const oneHourAgo = new Date(now.getTime() - 3600000);
+
+  // Approx rate based on last hour
+  // (fallback: if shift just started, use overall)
+  const elapsedHours = Math.max(
+    (now - new Date(now.setHours(8,30,0,0))) / 3600000,
+    0.01
+  );
+
+  let rate = packed / elapsedHours;
+
+  if(rate <= 0){
+    document.getElementById("predictionText").innerText = "--";
+    return;
+  }
+
+  const remaining = total - packed;
+  const hoursNeeded = remaining / rate;
+
+  const finish = new Date(now.getTime() + hoursNeeded * 3600000);
+
+  const hh = String(finish.getHours()).padStart(2,'0');
+  const mm = String(finish.getMinutes()).padStart(2,'0');
+
+  document.getElementById("predictionText").innerText =
+    "Expected completion time: " + hh + ":" + mm;
 }
 
 
