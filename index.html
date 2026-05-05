@@ -57,7 +57,7 @@ button:hover{opacity:0.85}
   margin:10px;
 }
 
-/* MAIN FRAME (NO FILL, ONLY OUTLINES) */
+/* FRAME (OUTLINE ONLY) */
 .frame{
   margin-top:20px;
   display:flex;
@@ -66,7 +66,7 @@ button:hover{opacity:0.85}
   gap:20px;
 }
 
-/* LEFT PANEL */
+/* LEFT */
 .leftPanel{
   width:50%;
   display:flex;
@@ -79,7 +79,7 @@ button:hover{opacity:0.85}
   padding:15px;
 }
 
-/* RIGHT PANEL */
+/* RIGHT */
 .rightPanel{
   width:50%;
   display:flex;
@@ -124,10 +124,11 @@ button:hover{opacity:0.85}
   margin-top:10px;
 }
 
-/* END BUTTON AT BOTTOM */
-.bottomButton{
-  margin-top:auto;
-  width:100%;
+/* OUTSIDE BUTTON WRAPPER */
+.bottomArea{
+  margin-top:25px;
+  display:flex;
+  justify-content:center;
 }
 
 /* SUMMARY */
@@ -163,36 +164,28 @@ button:hover{opacity:0.85}
     <button onclick="add()">Add</button>
   </div>
 
-  <!-- DASHBOARD -->
+  <!-- FRAME -->
   <div class="frame">
 
-    <!-- LEFT -->
     <div class="leftPanel">
-
       <div id="statusCircle">--</div>
-
       <div id="requiredText">--</div>
-
-      <!-- END BUTTON AT BOTTOM -->
-      <div class="bottomButton">
-        <button class="danger" onclick="endProduction()">
-          End Shift
-        </button>
-      </div>
-
     </div>
 
-    <!-- RIGHT -->
     <div class="rightPanel">
-
       <div id="legendNote">🟢 Packed | 🔴 Remaining</div>
-
       <div id="chartContainer">
         <canvas id="chart"></canvas>
       </div>
-
     </div>
 
+  </div>
+
+  <!-- OUTSIDE END SHIFT BUTTON -->
+  <div class="bottomArea">
+    <button class="danger" onclick="endProduction()">
+      End Shift
+    </button>
   </div>
 
 </div>
