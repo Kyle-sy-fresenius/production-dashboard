@@ -18,7 +18,7 @@ body{
 }
 
 .card{
-  width:520px;
+  width:540px;
   margin:auto;
   background:rgba(255,255,255,0.12);
   border-radius:15px;
@@ -55,16 +55,21 @@ button:hover{opacity:0.85}
   margin:10px;
 }
 
+/* MAIN LAYOUT FIX */
 .dashboard{
   display:flex;
   justify-content:center;
   align-items:center;
-  gap:40px;
+  gap:60px;
   margin-top:20px;
 }
 
-#chartContainer{
-  width:200px;
+/* STATUS SIDE */
+#statusBlock{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:10px;
 }
 
 #statusCircle{
@@ -80,9 +85,24 @@ button:hover{opacity:0.85}
   padding:10px;
 }
 
-#predictionText{
+/* PIE CHART CENTER FIX */
+#chartContainer{
+  width:220px;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+}
+
+/* NEW REQUIRED UNITS TEXT */
+#requiredText{
   margin-top:15px;
   font-size:14px;
+}
+
+/* CENTER LEGEND */
+.chart-legend{
+  display:flex;
+  justify-content:center;
 }
 
 #summary{
@@ -99,14 +119,14 @@ button:hover{opacity:0.85}
 
 <div class="card">
 
-<!-- START SCREEN -->
+<!-- START -->
 <div id="startScreen">
   <p>Enter total units for today's production:</p>
   <input type="number" id="totalInput">
   <button onclick="start()">Start</button>
 </div>
 
-<!-- MAIN SCREEN -->
+<!-- MAIN -->
 <div id="mainScreen" style="display:none;">
 
   <div class="inline">Total: <span id="totalShow">0</span></div>
@@ -119,21 +139,23 @@ button:hover{opacity:0.85}
 
   <div class="dashboard">
 
-    <div>
+    <!-- STATUS -->
+    <div id="statusBlock">
       <div id="statusCircle">--</div>
 
       <button class="danger" onclick="endProduction()">
         End Production
       </button>
+
+      <div id="requiredText">--</div>
     </div>
 
+    <!-- PIE -->
     <div id="chartContainer">
       <canvas id="chart"></canvas>
     </div>
 
   </div>
-
-  <div id="predictionText">--</div>
 
 </div>
 
@@ -186,13 +208,19 @@ function start(){
     },
     options:{
       plugins:{
-        legend:{labels:{color:"white"}},
+        legend:{
+          position:"bottom",
+          labels:{
+            color:"white",
+            align:"center"
+          }
+        },
         datalabels:{
           color:"white",
           formatter:(v,c)=>{
-            const d = c.chart.data.datasets[0].data;
-            const t = d[0] + d[1];
-            return ((v/t)*100).toFixed(0) + "%";
+            const d=c.chart.data.datasets[0].data;
+            const t=d[0]+d[1];
+            return ((v/t)*100).toFixed(0)+"%";
           }
         }
       }
@@ -222,7 +250,7 @@ function updateAll(){
   chart.data.datasets[0].data = [done,left];
   chart.update();
 
-  // STATUS
+  // STATUS LOGIC
   let prog = packed / total;
   let time = timeProgress();
 
@@ -239,36 +267,23 @@ function updateAll(){
     box.innerText = "Behind";
   }
 
-  updatePrediction();
+  updateRequired();
 }
 
-function updatePrediction(){
+function updateRequired(){
 
-  if(total === 0 || packed === 0){
-    document.getElementById("predictionText").innerText = "--";
-    return;
+  const expected = total * timeProgress();
+  const diff = expected - packed;
+
+  const el = document.getElementById("requiredText");
+
+  if(diff <= 0){
+    el.innerText = "You are on track (0 units needed)";
+    el.style.color = "#00ff88";
+  } else {
+    el.innerText = "Need " + Math.ceil(diff) + " units to be on track";
+    el.style.color = "orange";
   }
-
-  const now = new Date();
-
-  const start = new Date();
-  start.setHours(8,30,0,0);
-
-  const hours = Math.max((now - start) / 3600000, 0.01);
-
-  const rate = packed / hours;
-  if(rate <= 0) return;
-
-  const remaining = total - packed;
-  const hoursNeeded = remaining / rate;
-
-  const finish = new Date(now.getTime() + hoursNeeded * 3600000);
-
-  const hh = String(finish.getHours()).padStart(2,"0");
-  const mm = String(finish.getMinutes()).padStart(2,"0");
-
-  document.getElementById("predictionText").innerText =
-    "Expected completion time: " + hh + ":" + mm;
 }
 
 function endProduction(){
@@ -293,7 +308,7 @@ function endProduction(){
   `;
 }
 
-setInterval(updateAll, 60000);
+setInterval(updateAll,60000);
 
 </script>
 
