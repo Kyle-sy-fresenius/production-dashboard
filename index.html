@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Production Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+
+<style>
+body{
+  margin:0;
+  font-family:Arial;
+  background:linear-gradient(to right,#4facfe,#00c6ff);
+  color:white;
+  text-align:center;
+  padding:30px;
+}
+
+.card{
+  width:520px;
+  margin:auto;
+  background:rgba(255,255,255,0.12);
+  border-radius:15px;
+  padding:20px;
+  backdrop-filter:blur(10px);
+}
+
+input{
+  padding:10px;
+  border:none;
+  border-radius:6px;
+  margin:10px;
+  width:170px;
+}
+
+button{
+  padding:10px 16px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  background:white;
+  font-weight:bold;
+}
+
+button:hover{opacity:0.85}
+
+.danger{
+  background:#ff4d4d;
+  color:white;
+}
+
+.inline{
+  font-size:20px;
+  margin:10px;
+}
+
+.dashboard{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:40px;
+  margin-top:20px;
+}
+
+#chartContainer{width:200px;}
+
+#statusCircle{
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
+  font-size:14px;
+  background:gray;
+  padding:10px;
+}
+
+#paceText{
+  margin-top:10px;
+  font-size:13px;
+}
+
+#summary{
+  display:none;
+  margin-top:20px;
+  font-size:18px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Production Dashboard</h1>
+
+<div class="card">
+
+<!-- START -->
+<div id="startScreen">
+  <p>Enter total units for today's production:</p>
+  <input type="number" id="totalInput">
+  <button onclick="start()">Start</button>
+</div>
+
+<!-- MAIN -->
+<div id="mainScreen" style="display:none;">
+
+  <div class="inline">Total: <span id="totalShow">0</span></div>
+  <div class="inline">Packed: <span id="packedShow">0</span></div>
+
+  <div>
+    <input id="addInput" type="number" placeholder="Add units">
+    <button onclick="add()">Add</button>
+  </div>
+
+  <button class="danger" onclick="endProduction()">End Production</button>
+
+  <div class="dashboard">
+
+    <div>
+      <div id="statusCircle">--</div>
+      <div id="paceText">--</div>
+    </div>
+
+    <div id="chartContainer">
+      <canvas id="chart"></canvas>
+    </div>
+
+  </div>
+</div>
+
+<!-- SUMMARY -->
+<div id="summary"></div>
+
+</div>
+
+<script>
+
+let total=0;
+let packed=0;
+let chart;
+
+const startShift=8.5;
+const endShift=21.5;
+
+const passwords=["Kyle","Sofiya","Elamari","Osama"];
+
+function nowDecimal(){
+  const d=new Date();
+  return d.getHours()+d.getMinutes()/60;
+}
+
+function timeProgress(){
+  const n=nowDecimal();
+  if(n<=startShift)return 0;
+  if(n>=endShift)return 1;
+  return (n-startShift)/(endShift-startShift);
+}
+
+function start(){
+  total=parseFloat(document.getElementById("totalInput").value);
+  if(!total)return;
+
+  document.getElementById("startScreen").style.display="none";
+  document.getElementById("mainScreen").style.display="block";
+
+  document.getElementById("totalShow").innerText=total;
+
+  chart=new Chart(document.getElementById("chart"),{
+    type:"pie",
+    data:{
+      labels:["Packed","Remaining"],
+      datasets:[{
+        data:[0,total],
+        backgroundColor:["#00ff88","#ff4d4d"]
+      }]
+    },
+    options:{
+      plugins:{
+        legend:{labels:{color:"white"}},
+        datalabels:{
+          color:"white",
+          formatter:(v,c)=>{
+            const d=c.chart.data.datasets[0].data;
+            const t=d[0]+d[1];
+            return ((v/t)*100).toFixed(0)+"%";
+          }
+        }
+      }
+    },
+    plugins:[ChartDataLabels]
+  });
+
+  updateAll();
+}
+
+function add(){
+  let v=parseFloat(document.getElementById("addInput").value);
+  if(!v)return;
+
+  packed+=v;
+  document.getElementById("packedShow").innerText=packed;
+  document.getElementById("addInput").value="";
+
+  updateAll();
+}
+
+function updateAll(){
+  let done=Math.min(packed,total);
+  let left=Math.max(total-packed,0);
+
+  chart.data.datasets[0].data=[done,left];
+  chart.update();
+
+  // STATUS
+  let prog=packed/total;
+  let time=timeProgress();
+
+  const box=document.getElementById("statusCircle");
+
+  if(prog>=time){
+    box.style.background="green";
+    box.innerText="On Track";
+  }else if(prog>=time-0.1){
+    box.style.background="orange";
+    box.innerText="Slightly Behind";
+  }else{
+    box.style.background="red";
+    box.innerText="Behind";
+  }
+
+  updatePace();
+}
+
+function updatePace(){
+  if(packed<=0)return;
+
+  const start=new Date();
+  start.setHours(8,30,0,0);
+
+  const hours=(new Date()-start)/3600000;
+  if(hours<=0)return;
+
+  const rate=packed/hours;
+  if(rate<=0)return;
+
+  const finish=new Date(start.getTime()+(total/rate)*3600000);
+
+  document.getElementById("paceText").innerText=
+    "At this pace you will complete everything at " +
+    String(finish.getHours()).padStart(2,"0")+":"+
+    String(finish.getMinutes()).padStart(2,"0");
+}
+
+function endProduction(){
+
+  let pass=prompt("Enter password:");
+  if(!passwords.includes(pass)){
+    alert("Access denied");
+    return;
+  }
+
+  const pushed=total-packed;
+  const percent=((packed/total)*100).toFixed(1);
+
+  document.getElementById("mainScreen").style.display="none";
+  document.getElementById("summary").style.display="block";
+
+  document.getElementById("summary").innerHTML=`
+    <h2>Final Production Report</h2>
+    <p><b>Packed:</b> ${packed}</p>
+    <p><b>Pushed:</b> ${pushed}</p>
+    <p><b>Completed:</b> ${percent}%</p>
+  `;
+}
+
+setInterval(updateAll,60000);
+
+</script>
+
+</body>
+</html>
