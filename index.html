@@ -15,11 +15,11 @@ body{
   background:linear-gradient(to right,#4facfe,#00c6ff);
   color:white;
   text-align:center;
-  padding:30px;
+  padding:25px;
 }
 
 .card{
-  width:560px;
+  width:600px;
   margin:auto;
   padding:20px;
   border-radius:15px;
@@ -31,7 +31,7 @@ input,button{
   padding:10px;
   border:none;
   border-radius:6px;
-  margin:10px;
+  margin:8px;
 }
 
 button{
@@ -40,6 +40,7 @@ button{
   cursor:pointer;
 }
 
+/* layout */
 .frame{
   display:flex;
   justify-content:space-between;
@@ -49,32 +50,60 @@ button{
 
 .panel{
   width:50%;
-  border:2px solid white;
-  border-radius:12px;
-  padding:15px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
 }
 
-#status{
-  width:120px;
-  height:120px;
+/* PIE */
+#chartBox{
+  width:180px;
+  height:180px;
+}
+
+/* STATUS RING */
+#statusRing{
+  width:180px;
+  height:180px;
   border-radius:50%;
   display:flex;
   align-items:center;
   justify-content:center;
-  margin:auto;
   font-weight:bold;
+  transition:0.3s;
+  border:6px solid rgba(255,255,255,0.2);
+  box-shadow:0 0 20px rgba(255,255,255,0.2);
 }
 
-/* DEBUG BOX */
-#debug{
-  background:rgba(0,0,0,0.35);
-  padding:10px;
-  margin:10px auto;
-  width:520px;
+/* RECENT LIST */
+#recentAdds{
+  margin-top:10px;
   font-size:12px;
   text-align:left;
-  border-radius:8px;
-  white-space:pre-wrap;
+  width:100%;
+}
+
+.recentItem{
+  margin:2px 0;
+}
+
+.fade{
+  opacity:0.4;
+}
+
+/* LEGEND */
+.legend{
+  font-size:11px;
+  margin-bottom:6px;
+  opacity:0.9;
+}
+
+/* END BUTTON */
+#endBtn{
+  margin-top:15px;
+  background:#ff4d4d;
+  color:white;
 }
 </style>
 </head>
@@ -82,8 +111,6 @@ button{
 <body>
 
 <h1>Production Dashboard</h1>
-
-<div id="debug">Loading Supabase...</div>
 
 <div class="card">
 
@@ -103,15 +130,27 @@ button{
 
 <div class="frame">
 
+<!-- STATUS RING -->
 <div class="panel">
-  <div id="status">--</div>
+  <div id="statusRing">--</div>
 </div>
 
+<!-- PIE -->
 <div class="panel">
+
+<div class="legend">🟢 Packed | 🔴 Remaining</div>
+
+<div id="chartBox">
   <canvas id="chart"></canvas>
 </div>
 
+<div id="recentAdds"></div>
+
 </div>
+
+</div>
+
+<button id="endBtn" onclick="endShift()">End Production</button>
 
 </div>
 
@@ -119,51 +158,33 @@ button{
 
 <script>
 
-/* =========================
-   SUPABASE CLIENT
-========================= */
+/* =======================
+   SUPABASE
+======================= */
 const sb = supabase.createClient(
   "https://afakpgezcpvvnvoqcthj.supabase.co",
   "sb_publishable_n7KfiuQXIE_hekGgd3eXsQ_gEqaJ_9Y"
 );
 
-/* =========================
-   STATE
-========================= */
-let total = 0;
-let packed = 0;
+/* STATE */
+let total=0;
+let packed=0;
+let recent=[];
 let chart;
 
-/* =========================
-   DEBUG DISPLAY
-========================= */
-function debug(msg){
-  document.getElementById("debug").innerText = msg;
-}
-
-/* =========================
-   LOAD DATA FROM SUPABASE
-========================= */
+/* LOAD */
 async function load(){
-
-  const { data, error } = await sb
+  const { data } = await sb
     .from("production_dashboard")
     .select("*")
-    .eq("id",1);
+    .eq("id",1)
+    .single();
 
-  debug(
-`SUPABASE RESULT:
-error: ${JSON.stringify(error, null, 2)}
-data: ${JSON.stringify(data, null, 2)}`
-  );
+  if(!data) return;
 
-  if(error || !data || !data[0]){
-    showStart();
-    return;
-  }
-
-  total = data[0].total;
-  packed = data[0].packed;
+  total = data.total;
+  packed = data.packed;
+  recent = data.recent_adds || [];
 
   showMain();
   createChart();
@@ -172,60 +193,50 @@ data: ${JSON.stringify(data, null, 2)}`
 
 load();
 
-/* =========================
-   SAVE DATA
-========================= */
+/* START */
+function start(){
+  total = parseFloat(totalInput.value);
+  packed = 0;
+
+  save();
+  showMain();
+  createChart();
+  update();
+}
+
+/* ADD */
+function add(){
+  let v = parseFloat(addInput.value);
+  if(!v) return;
+
+  packed += v;
+
+  recent.unshift(v);
+  if(recent.length>8) recent.pop();
+
+  addInput.value="";
+
+  save();
+  update();
+}
+
+/* SAVE */
 async function save(){
   await sb.from("production_dashboard").upsert({
     id:1,
     total,
-    packed
+    packed,
+    recent_adds:recent
   });
 }
 
-/* =========================
-   START SHIFT
-========================= */
-function start(){
-  total = parseFloat(document.getElementById("totalInput").value);
-  if(!total) return;
-
-  packed = 0;
-
-  showMain();
-  createChart();
-  update();
-  save();
-}
-
-/* =========================
-   ADD UNITS
-========================= */
-function add(){
-  let v = parseFloat(document.getElementById("addInput").value);
-  if(!v) return;
-
-  packed += v;
-  update();
-  save();
-}
-
-/* =========================
-   UI SWITCH
-========================= */
-function showStart(){
-  startScreen.style.display="block";
-  mainScreen.style.display="none";
-}
-
+/* UI */
 function showMain(){
   startScreen.style.display="none";
   mainScreen.style.display="block";
 }
 
-/* =========================
-   CHART
-========================= */
+/* CHART */
 function createChart(){
   if(chart) return;
 
@@ -240,50 +251,69 @@ function createChart(){
     },
     options:{
       plugins:{
-        legend:{display:false}
+        legend:{display:false},
+        datalabels:{
+          color:"#fff",
+          formatter:(v,ctx)=>{
+            const d = ctx.chart.data.datasets[0].data;
+            const sum = d[0]+d[1];
+            return sum ? ((v/sum)*100).toFixed(0)+"%" : "0%";
+          }
+        }
       }
-    }
+    },
+    plugins:[ChartDataLabels]
   });
 }
 
-/* =========================
-   UPDATE UI
-========================= */
+/* UPDATE */
 function update(){
 
   totalShow.innerText = total;
   packedShow.innerText = packed;
   remainingShow.innerText = Math.max(total-packed,0);
 
-  if(chart){
-    chart.data.datasets[0].data = [
-      Math.min(packed,total),
-      Math.max(total-packed,0)
-    ];
-    chart.update();
-  }
+  chart.data.datasets[0].data = [
+    Math.min(packed,total),
+    Math.max(total-packed,0)
+  ];
+  chart.update();
 
-  const status = document.getElementById("status");
+  /* STATUS RING */
+  const ring = document.getElementById("statusRing");
 
-  if(total === 0){
-    status.innerText = "--";
-    return;
-  }
-
-  let ratio = packed / total;
+  const ratio = total ? packed/total : 0;
 
   if(ratio >= 1){
-    status.innerText = "Complete";
-    status.style.background = "green";
+    ring.innerText = "100%";
+    ring.style.border="6px solid #00ff88";
+    ring.style.boxShadow="0 0 25px #00ff88";
   }
   else if(ratio >= 0.8){
-    status.innerText = "On Track";
-    status.style.background = "orange";
+    ring.innerText = Math.round(ratio*100)+"%";
+    ring.style.border="6px solid orange";
+    ring.style.boxShadow="0 0 25px orange";
   }
   else{
-    status.innerText = "Behind";
-    status.style.background = "red";
+    ring.innerText = Math.round(ratio*100)+"%";
+    ring.style.border="6px solid red";
+    ring.style.boxShadow="0 0 25px red";
   }
+
+  /* RECENT */
+  document.getElementById("recentAdds").innerHTML =
+    recent.map((v,i)=>
+      `<div class="recentItem ${i>=4?'fade':''}">+${v}</div>`
+    ).join("");
+}
+
+/* END SHIFT */
+function endShift(){
+  alert(
+    "Shift Complete\n\nPacked: "+packed+
+    "\nRemaining: "+Math.max(total-packed,0)+
+    "\nCompletion: "+((packed/total)*100).toFixed(1)+"%"
+  );
 }
 
 </script>
