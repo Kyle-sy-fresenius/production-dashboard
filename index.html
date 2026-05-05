@@ -40,6 +40,11 @@ button{
   cursor:pointer;
 }
 
+.inline{
+  font-size:20px;
+  margin:10px;
+}
+
 .frame{
   display:flex;
   justify-content:space-between;
@@ -78,32 +83,34 @@ button{
 }
 
 #recentAdds{
-  width:60px;
+  width:55px;
   font-size:11px;
   text-align:left;
 }
 
-.recentItem{margin:2px 0;}
-.fade{opacity:0.35;}
-
-#trackText{margin-top:10px;font-size:14px}
-
-/* =========================
-   🔥 NUMBER FADE ANIMATION
-========================= */
-.fade-number {
-  animation: fadeDown 0.35s ease;
+.recentItem{
+  margin:3px 0;
+  font-weight:bold;
 }
 
-@keyframes fadeDown {
-  0% {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.fade{
+  opacity:0.35;
+}
+
+#trackText{
+  margin-top:10px;
+  font-size:14px;
+}
+
+.bottom{
+  margin-top:25px;
+  display:flex;
+  justify-content:center;
+}
+
+#summary{
+  display:none;
+  margin-top:20px;
 }
 </style>
 </head>
@@ -115,254 +122,38 @@ button{
 <div class="card">
 
 <div id="startScreen">
-  <input id="totalInput" type="number" placeholder="Total units">
+  <p>Enter total units for today's production:</p>
+  <input id="totalInput" type="number">
   <button onclick="start()">Start</button>
 </div>
 
 <div id="mainScreen" style="display:none;">
 
-<div>Total: <span id="totalShow">0</span></div>
-<div>Packed: <span id="packedShow">0</span></div>
-<div>Remaining: <span id="remainingShow">0</span></div>
+  <div class="inline">Total: <span id="totalShow">0</span></div>
+  <div class="inline">Packed: <span id="packedShow">0</span></div>
+  <div class="inline">Remaining: <span id="remainingShow">0</span></div>
 
-<input id="addInput" type="number" placeholder="Add units">
-<button onclick="add()">Add</button>
-
-<div class="frame">
-
-<div class="panel">
-  <div id="status">--</div>
-  <div id="trackText">--</div>
-</div>
-
-<div class="panel">
-  <div class="chartRow">
-    <div id="chartBox">
-      <canvas id="chart"></canvas>
-    </div>
-    <div id="recentAdds"></div>
+  <div>
+    <input id="addInput" type="number" placeholder="Add units">
+    <button onclick="add()">Add</button>
   </div>
-</div>
 
-</div>
+  <div class="frame">
 
-</div>
-</div>
+    <div class="panel">
+      <div id="status">--</div>
+      <div id="trackText">--</div>
+    </div>
 
-<script>
-const { createClient } = supabase;
+    <div class="panel">
+      <div style="font-size:12px;margin-bottom:8px;">🟢 Packed | 🔴 Remaining</div>
 
-const sb = createClient(
-  "https://afakpgezcpvvnvoqcthj.supabase.co",
-  "YOUR_ANON_KEY"
-);
+      <div class="chartRow">
+        <div id="chartBox">
+          <canvas id="chart"></canvas>
+        </div>
 
-/* ELEMENTS */
-const startScreen = document.getElementById("startScreen");
-const mainScreen = document.getElementById("mainScreen");
+        <div id="recentAdds"></div>
+      </div>
+    </div
 
-const totalInput = document.getElementById("totalInput");
-const addInput = document.getElementById("addInput");
-
-const totalShow = document.getElementById("totalShow");
-const packedShow = document.getElementById("packedShow");
-const remainingShow = document.getElementById("remainingShow");
-
-const recentAddsEl = document.getElementById("recentAdds");
-const statusBox = document.getElementById("status");
-const trackText = document.getElementById("trackText");
-
-/* STATE */
-let total = 0;
-let packed = 0;
-let recentAdds = [];
-let chart;
-
-/* =========================
-   🔥 FADE FUNCTION
-========================= */
-function animateNumber(el, value){
-  el.classList.remove("fade-number");
-  void el.offsetWidth;
-  el.innerText = value;
-  el.classList.add("fade-number");
-}
-
-/* LOAD */
-async function loadData(){
-  const { data } = await sb
-    .from("production_dashboard")
-    .select("*")
-    .eq("id",1)
-    .single();
-
-  if(!data) return;
-
-  total = data.total || 0;
-  packed = data.packed || 0;
-  recentAdds = data.recent_adds || [];
-
-  updateRecent();
-
-  if(total > 0){
-    startScreen.style.display="none";
-    mainScreen.style.display="block";
-    createChart();
-    update();
-  }
-}
-
-/* SAVE */
-async function saveData(){
-  await sb.from("production_dashboard").upsert({
-    id:1,
-    total,
-    packed,
-    recent_adds: recentAdds
-  });
-}
-
-/* START */
-function start(){
-  total = parseFloat(totalInput.value);
-  if(!total) return;
-
-  packed = 0;
-
-  startScreen.style.display="none";
-  mainScreen.style.display="block";
-
-  createChart();
-  update();
-  saveData();
-}
-
-/* CHART */
-function createChart(){
-  if(chart) return;
-
-  chart = new Chart(document.getElementById("chart"),{
-    type:"pie",
-    data:{
-      labels:["Packed","Remaining"],
-      datasets:[{
-        data:[0,total],
-        backgroundColor:["#00ff88","#ff5252"]
-      }]
-    },
-    options:{
-      plugins:{
-        legend:{display:false},
-        datalabels:{
-          color:"white",
-          formatter:(value,ctx)=>{
-            let data = ctx.chart.data.datasets[0].data;
-            let sum = data[0]+data[1];
-            if(sum===0) return "0%";
-            return ((value/sum)*100).toFixed(0)+"%";
-          }
-        }
-      }
-    },
-    plugins:[ChartDataLabels]
-  });
-}
-
-/* ADD */
-function add(){
-  let v = parseFloat(addInput.value);
-  if(!v) return;
-
-  packed += v;
-
-  recentAdds.unshift(v);
-  if(recentAdds.length > 6) recentAdds.pop();
-
-  addInput.value = "";
-
-  update();
-  updateRecent();
-  saveData();
-}
-
-/* UPDATE */
-function update(){
-  if(!chart || total === 0) return;
-
-  animateNumber(totalShow, total);
-  animateNumber(packedShow, packed);
-  animateNumber(remainingShow, Math.max(total - packed, 0));
-
-  chart.data.datasets[0].data = [
-    Math.min(packed,total),
-    Math.max(total-packed,0)
-  ];
-  chart.update();
-
-  const now = new Date();
-  const start = new Date(); start.setHours(8,30,0,0);
-  const end = new Date(); end.setHours(21,30,0,0);
-
-  let timeProgress = (now - start) / (end - start);
-  timeProgress = Math.max(0, Math.min(1, timeProgress));
-
-  let expected = total * timeProgress;
-  let diff = expected - packed;
-
-  let progress = total > 0 ? packed / total : 0;
-
-  if(progress >= timeProgress + 0.02){
-    statusBox.style.background="green";
-    statusBox.innerText="On Track";
-  }
-  else if(progress >= timeProgress - 0.1){
-    statusBox.style.background="orange";
-    statusBox.innerText="Slightly Behind";
-  }
-  else{
-    statusBox.style.background="red";
-    statusBox.innerText="Behind";
-  }
-
-  trackText.innerText =
-    diff <= 0
-    ? "On track for shift pace"
-    : "Need " + Math.ceil(diff) + " units to be on track";
-}
-
-/* RECENT */
-function updateRecent(){
-  let html = "";
-
-  recentAdds.forEach((v,i)=>{
-    let cls = i >= 3 ? "fade" : "";
-    html += `<div class="recentItem ${cls}">+${v}</div>`;
-  });
-
-  recentAddsEl.innerHTML = html;
-}
-
-/* REALTIME */
-sb.channel("live")
-.on("postgres_changes",
-  { event:"*", schema:"public", table:"production_dashboard" },
-  payload => {
-
-    if(!payload.new) return;
-
-    total = payload.new.total || 0;
-    packed = payload.new.packed || 0;
-    recentAdds = payload.new.recent_adds || [];
-
-    update();
-    updateRecent();
-  }
-)
-.subscribe();
-
-/* INIT */
-loadData();
-</script>
-
-</body>
-</html>
