@@ -175,14 +175,26 @@ async function add(){
   let v = parseFloat(document.getElementById("addInput").value);
   if(!v) return;
 
+  // update locally first (instant feedback)
   packed += v;
 
-  await sb
+  document.getElementById("packedShow").innerText = packed;
+
+  document.getElementById("addInput").value = "";
+
+  updateChart();
+  updateStatus();
+
+  // then push to Supabase
+  const { error } = await sb
     .from("production")
     .update({ packed: packed })
-    .eq("id",1);
+    .eq("id", 1);
 
-  document.getElementById("addInput").value="";
+  if(error){
+    console.log("DB error:", error);
+    alert("Database update failed");
+  }
 }
 
 /* REALTIME */
