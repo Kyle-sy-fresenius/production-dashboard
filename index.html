@@ -121,7 +121,7 @@ button:hover{opacity:0.85}
 
     <div>
       <div id="statusCircle">--</div>
-      <div id="paceText">--</div>
+      
     </div>
 
     <div id="chartContainer">
@@ -231,35 +231,10 @@ function updateAll(){
     box.innerText="Behind";
   }
 
-  updatePace();
+ 
 }
 
-function updatePace(){
-  if(packed <= 0) return;
 
-  const now = new Date();
-
-  // Only consider last active period (last 1 hour smoothing)
-  const lookback = 1; // hours
-
-  const start = new Date(now.getTime() - lookback * 3600000);
-
-  const hours = lookback; // fixed window
-
-  const rate = packed / ((now - new Date(now.getTime() - lookback * 3600000)) / 3600000);
-
-  if(rate <= 0) return;
-
-  const remaining = total - packed;
-  const hoursNeeded = remaining / rate;
-
-  const finish = new Date(now.getTime() + hoursNeeded * 3600000);
-
-  document.getElementById("paceText").innerText =
-    "At this pace you will complete everything at " +
-    String(finish.getHours()).padStart(2,"0") + ":" +
-    String(finish.getMinutes()).padStart(2,"0");
-}
 
 function endProduction(){
 
