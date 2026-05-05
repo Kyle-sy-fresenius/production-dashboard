@@ -57,33 +57,38 @@ button:hover{opacity:0.85}
   margin:10px;
 }
 
-/* FRAME */
+/* MAIN FRAME (NO FILL, ONLY OUTLINES) */
 .frame{
   margin-top:20px;
-  background:white;
-  border-radius:15px;
-  padding:20px;
   display:flex;
   justify-content:space-between;
-  align-items:center;
-  color:black;
+  align-items:stretch;
+  gap:20px;
 }
 
-/* LEFT */
+/* LEFT PANEL */
 .leftPanel{
   width:50%;
   display:flex;
   flex-direction:column;
   align-items:center;
   gap:15px;
+
+  border:2px solid white;
+  border-radius:12px;
+  padding:15px;
 }
 
-/* RIGHT */
+/* RIGHT PANEL */
 .rightPanel{
   width:50%;
   display:flex;
   flex-direction:column;
   align-items:center;
+
+  border:2px solid white;
+  border-radius:12px;
+  padding:15px;
 }
 
 /* STATUS */
@@ -109,15 +114,20 @@ button:hover{opacity:0.85}
 /* LEGEND */
 #legendNote{
   font-size:12px;
-  margin-bottom:5px;
-  color:#333;
+  margin-bottom:10px;
+  color:white;
 }
 
 /* REQUIRED */
 #requiredText{
   font-size:13px;
   margin-top:10px;
-  text-align:center;
+}
+
+/* END BUTTON AT BOTTOM */
+.bottomButton{
+  margin-top:auto;
+  width:100%;
 }
 
 /* SUMMARY */
@@ -156,17 +166,31 @@ button:hover{opacity:0.85}
   <!-- DASHBOARD -->
   <div class="frame">
 
+    <!-- LEFT -->
     <div class="leftPanel">
-      <button class="danger" onclick="endProduction()">End Production</button>
+
       <div id="statusCircle">--</div>
+
       <div id="requiredText">--</div>
+
+      <!-- END BUTTON AT BOTTOM -->
+      <div class="bottomButton">
+        <button class="danger" onclick="endProduction()">
+          End Shift
+        </button>
+      </div>
+
     </div>
 
+    <!-- RIGHT -->
     <div class="rightPanel">
+
       <div id="legendNote">🟢 Packed | 🔴 Remaining</div>
+
       <div id="chartContainer">
         <canvas id="chart"></canvas>
       </div>
+
     </div>
 
   </div>
@@ -179,86 +203,68 @@ button:hover{opacity:0.85}
 
 <script>
 
-/* =======================
-   AUTH SYSTEM
-======================= */
+/* AUTH */
+let unlocked=false;
 
-let unlocked = false;
-
-const passwords = [
+const passwords=[
   "Kyle","Sofiya","Anjali","Krithika","Niroshan",
   "Lokesh","Elamari","Osama","Netra","Thishanthan"
 ];
 
 function requestAccess(){
-  let pass = prompt("Enter password to access dashboard:");
-
+  let pass=prompt("Enter password:");
   if(passwords.includes(pass)){
-    unlocked = true;
+    unlocked=true;
     sessionStorage.setItem("auth","true");
   } else {
-    alert("Access denied");
-    document.body.innerHTML =
-      "<h2 style='color:white;text-align:center;margin-top:100px;'>Dashboard Locked</h2>";
+    document.body.innerHTML="<h2 style='color:white;text-align:center;margin-top:100px;'>Locked</h2>";
   }
 }
 
-window.onload = function(){
+window.onload=function(){
   if(sessionStorage.getItem("auth")==="true"){
-    unlocked = true;
-  } else {
-    requestAccess();
-  }
+    unlocked=true;
+  } else requestAccess();
 };
 
-window.addEventListener("beforeunload", function(e){
-  if(unlocked){
-    e.preventDefault();
-    e.returnValue = "";
-  }
-});
-
-/* =======================
-   CORE LOGIC
-======================= */
-
-let total = 0;
-let packed = 0;
+/* CORE */
+let total=0;
+let packed=0;
 let chart;
 
-const startShift = 8.5;
-const endShift = 21.5;
+const startShift=8.5;
+const endShift=21.5;
 
 function nowDecimal(){
-  const d = new Date();
-  return d.getHours() + d.getMinutes()/60;
+  const d=new Date();
+  return d.getHours()+d.getMinutes()/60;
 }
 
 function timeProgress(){
-  const n = nowDecimal();
-  if(n <= startShift) return 0;
-  if(n >= endShift) return 1;
-  return (n - startShift) / (endShift - startShift);
+  const n=nowDecimal();
+  if(n<=startShift)return 0;
+  if(n>=endShift)return 1;
+  return (n-startShift)/(endShift-startShift);
 }
 
 /* START */
 function start(){
 
-  total = parseFloat(document.getElementById("totalInput").value);
-  if(!total) return;
+  total=parseFloat(document.getElementById("totalInput").value);
+  if(!total)return;
 
   document.getElementById("startScreen").style.display="none";
   document.getElementById("mainScreen").style.display="block";
 
-  document.getElementById("totalShow").innerText = total;
+  document.getElementById("totalShow").innerText=total;
 
-  chart = new Chart(document.getElementById("chart"),{
+  chart=new Chart(document.getElementById("chart"),{
     type:"pie",
     data:{
       labels:["Packed","Remaining"],
       datasets:[{
         data:[0,total],
-        backgroundColor:["#00c853","#ff5252"]
+        backgroundColor:["#00ff88","#ff5252"]
       }]
     },
     options:{
@@ -283,12 +289,12 @@ function start(){
 /* ADD */
 function add(){
 
-  let v = parseFloat(document.getElementById("addInput").value);
-  if(!v) return;
+  let v=parseFloat(document.getElementById("addInput").value);
+  if(!v)return;
 
-  packed += v;
-  document.getElementById("packedShow").innerText = packed;
-  document.getElementById("addInput").value = "";
+  packed+=v;
+  document.getElementById("packedShow").innerText=packed;
+  document.getElementById("addInput").value="";
 
   updateAll();
 }
@@ -296,21 +302,21 @@ function add(){
 /* UPDATE */
 function updateAll(){
 
-  let done = Math.min(packed,total);
-  let left = Math.max(total-packed,0);
+  let done=Math.min(packed,total);
+  let left=Math.max(total-packed,0);
 
-  chart.data.datasets[0].data = [done,left];
+  chart.data.datasets[0].data=[done,left];
   chart.update();
 
-  let prog = packed / total;
-  let time = timeProgress();
+  let prog=packed/total;
+  let time=timeProgress();
 
-  const box = document.getElementById("statusCircle");
+  const box=document.getElementById("statusCircle");
 
-  if(prog >= time){
+  if(prog>=time){
     box.style.background="green";
     box.innerText="On Track";
-  } else if(prog >= time - 0.1){
+  } else if(prog>=time-0.1){
     box.style.background="orange";
     box.innerText="Slightly Behind";
   } else {
@@ -321,27 +327,27 @@ function updateAll(){
   updateRequired();
 }
 
-/* REQUIRED UNITS */
+/* REQUIRED */
 function updateRequired(){
 
-  const expected = total * timeProgress();
-  const diff = expected - packed;
+  const expected=total*timeProgress();
+  const diff=expected-packed;
 
-  const el = document.getElementById("requiredText");
+  const el=document.getElementById("requiredText");
 
-  if(diff <= 0){
-    el.innerText = "On track (0 units needed)";
-    el.style.color = "green";
+  if(diff<=0){
+    el.innerText="On track (0 units needed)";
+    el.style.color="#00ff88";
   } else {
-    el.innerText = "Need " + Math.ceil(diff) + " units to be on track";
-    el.style.color = "orange";
+    el.innerText="Need "+Math.ceil(diff)+" units to be on track";
+    el.style.color="orange";
   }
 }
 
 /* END */
 function endProduction(){
 
-  let pass = prompt("Enter password:");
+  let pass=prompt("Enter password:");
   if(!passwords.includes(pass)){
     alert("Access denied");
     return;
@@ -349,17 +355,17 @@ function endProduction(){
 
   sessionStorage.removeItem("auth");
 
-  const pushed = total - packed;
-  const percent = ((packed/total)*100).toFixed(1);
+  const pushed=total-packed;
+  const percent=((packed/total)*100).toFixed(1);
 
   document.getElementById("mainScreen").style.display="none";
   document.getElementById("summary").style.display="block";
 
   document.getElementById("summary").innerHTML=`
     <h2>Final Report</h2>
-    <p><b>Packed:</b> ${packed}</p>
-    <p><b>Pushed:</b> ${pushed}</p>
-    <p><b>Completed:</b> ${percent}%</p>
+    <p>Packed: ${packed}</p>
+    <p>Pushed: ${pushed}</p>
+    <p>Completed: ${percent}%</p>
   `;
 }
 
