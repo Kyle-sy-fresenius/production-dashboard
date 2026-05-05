@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Production Dashboard (Offline)</title>
+<title>Production Dashboard</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
@@ -28,6 +28,7 @@ h1{margin-bottom:20px}
   backdrop-filter:blur(10px);
 }
 
+/* INPUTS */
 input{
   padding:10px;
   border:none;
@@ -52,7 +53,7 @@ button:hover{opacity:0.85}
   margin:10px;
 }
 
-/* FRAME */
+/* OUTLINE FRAME ONLY */
 .frame{
   display:flex;
   justify-content:space-between;
@@ -67,7 +68,7 @@ button:hover{opacity:0.85}
   padding:15px;
 }
 
-/* STATUS */
+/* STATUS CIRCLE */
 #status{
   width:120px;
   height:120px;
@@ -92,22 +93,29 @@ button:hover{opacity:0.85}
   display:flex;
   justify-content:center;
 }
+
+/* SUMMARY */
+#summary{
+  display:none;
+  margin-top:20px;
+}
 </style>
 </head>
 
 <body>
 
-<h1>Production Dashboard (Offline)</h1>
+<h1>Production Dashboard</h1>
 
 <div class="card">
 
-<!-- START -->
+<!-- START SCREEN -->
 <div id="startScreen">
-  <input id="totalInput" type="number" placeholder="Enter total units">
+  <p>Enter total units for today's production:</p>
+  <input id="totalInput" type="number">
   <button onclick="start()">Start</button>
 </div>
 
-<!-- MAIN -->
+<!-- MAIN SCREEN -->
 <div id="mainScreen" style="display:none;">
 
   <div class="inline">Total: <span id="totalShow">0</span></div>
@@ -132,7 +140,16 @@ button:hover{opacity:0.85}
 
   </div>
 
+  <div class="bottom">
+    <button style="background:#ff4d4d;color:white" onclick="endShift()">
+      End Shift
+    </button>
+  </div>
+
 </div>
+
+<!-- SUMMARY -->
+<div id="summary"></div>
 
 </div>
 
@@ -210,6 +227,24 @@ function update(){
     box.style.background="red";
     box.innerText="Behind";
   }
+}
+
+/* END SHIFT */
+function endShift(){
+
+  let pushed = total - packed;
+  let percent = total > 0 ? ((packed/total)*100).toFixed(1) : 0;
+
+  document.getElementById("mainScreen").style.display="none";
+  document.getElementById("summary").style.display="block";
+
+  document.getElementById("summary").innerHTML = `
+    <h2>Shift Complete</h2>
+    <p>Packed: ${packed}</p>
+    <p>Pushed (Remaining): ${pushed}</p>
+    <p>Completion: ${percent}%</p>
+    <button onclick="location.reload()">Restart</button>
+  `;
 }
 
 </script>
