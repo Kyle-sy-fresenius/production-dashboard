@@ -69,12 +69,23 @@ button{
   width:180px;
   height:180px;
   margin:auto;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;
+}
+
+canvas{
+  margin:auto;
 }
 
 #trackText{margin-top:10px;font-size:14px}
 
-.recentItem{margin:2px 0;}
-.fade{opacity:0.35;}
+/* END SCREEN */
+#summary{
+  display:none;
+  margin-top:20px;
+}
 
 /* animation */
 .fade-number{
@@ -94,11 +105,13 @@ button{
 
 <div class="card">
 
+<!-- START -->
 <div id="startScreen">
   <input id="totalInput" type="number" placeholder="Total units">
   <button onclick="start()">Start</button>
 </div>
 
+<!-- MAIN -->
 <div id="mainScreen" style="display:none;">
 
 <div>Total: <span id="totalShow">0</span></div>
@@ -123,56 +136,39 @@ button{
 
 </div>
 
+<button onclick="endShift()" style="margin-top:20px;background:#ff4d4d;color:white;">
+  End Production
+</button>
+
 </div>
+
+<!-- SUMMARY -->
+<div id="summary"></div>
+
 </div>
 
 <script>
-const supabaseUrl = "https://afakpgezcpvvnvoqcthj.supabase.co";
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFmYWtwZ2V6Y3B2dm52b3FjdGhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTY4ODYsImV4cCI6MjA5MzU3Mjg4Nn0.4sJ4VvVG09F0F5wsVlB3Z37v3oo9m0841NcaRr8bo4k";
-
-const sb = supabase.createClient(supabaseUrl, supabaseKey);
-
-const startScreen = document.getElementById("startScreen");
-const mainScreen = document.getElementById("mainScreen");
-
-const totalInput = document.getElementById("totalInput");
-const addInput = document.getElementById("addInput");
-
-const totalShow = document.getElementById("totalShow");
-const packedShow = document.getElementById("packedShow");
-const remainingShow = document.getElementById("remainingShow");
-
-const statusBox = document.getElementById("status");
-const trackText = document.getElementById("trackText");
 
 let total = 0;
 let packed = 0;
 let chart;
 
-/* ANIMATION */
-function animateNumber(el, value){
-  el.classList.remove("fade-number");
-  void el.offsetWidth;
-  el.innerText = value;
-  el.classList.add("fade-number");
-}
-
 /* START */
 function start(){
-  const value = parseFloat(totalInput.value);
-  if(isNaN(value) || value <= 0) return;
+  const v = parseFloat(document.getElementById("totalInput").value);
+  if(isNaN(v) || v <= 0) return;
 
-  total = value;
+  total = v;
   packed = 0;
 
-  startScreen.style.display="none";
-  mainScreen.style.display="block";
+  document.getElementById("startScreen").style.display="none";
+  document.getElementById("mainScreen").style.display="block";
 
   createChart();
   update();
 }
 
-/* CHART (FIXED) */
+/* CHART */
 function createChart(){
   if(chart) return;
 
@@ -189,27 +185,29 @@ function createChart(){
     options:{
       plugins:{
 
-        /* LEGEND BACK */
+        /* ✅ CENTERED LEGEND FIX */
         legend:{
           display:true,
           position:"bottom",
+          align:"center",
           labels:{
-            color:"white"
+            color:"white",
+            usePointStyle:true,
+            pointStyle:"circle",
+            padding:20,
+            boxWidth:10
           }
         },
 
-        /* PERCENTAGES BACK */
+        /* % LABELS INSIDE PIE */
         datalabels:{
           color:"white",
-          font:{
-            weight:"bold",
-            size:12
-          },
+          font:{weight:"bold",size:12},
           formatter:(value,ctx)=>{
             let data = ctx.chart.data.datasets[0].data;
             let sum = data.reduce((a,b)=>a+b,0);
-            if(sum === 0) return "0%";
-            return ((value/sum)*100).toFixed(0) + "%";
+            if(sum===0) return "0%";
+            return ((value/sum)*100).toFixed(0)+"%";
           }
         }
       }
@@ -221,22 +219,20 @@ function createChart(){
 
 /* ADD */
 function add(){
-  const v = parseFloat(addInput.value);
+  const v = parseFloat(document.getElementById("addInput").value);
   if(isNaN(v)) return;
 
   packed += v;
-  addInput.value = "";
+  document.getElementById("addInput").value = "";
 
   update();
 }
 
 /* UPDATE */
 function update(){
-  if(!chart) return;
-
-  animateNumber(totalShow, total);
-  animateNumber(packedShow, packed);
-  animateNumber(remainingShow, Math.max(total-packed,0));
+  document.getElementById("totalShow").innerText = total;
+  document.getElementById("packedShow").innerText = packed;
+  document.getElementById("remainingShow").innerText = Math.max(total-packed,0);
 
   chart.data.datasets[0].data = [
     Math.min(packed,total),
@@ -248,12 +244,15 @@ function update(){
   const start = new Date(); start.setHours(8,30,0,0);
   const end = new Date(); end.setHours(21,30,0,0);
 
-  let timeProgress = (now-start)/(end-start);
-  timeProgress = Math.max(0,Math.min(1,timeProgress));
+  let progress = (now-start)/(end-start);
+  progress = Math.max(0,Math.min(1,progress));
 
-  let expected = total*timeProgress;
+  let expected = total*progress;
 
-  if(packed/total >= timeProgress){
+  let statusBox = document.getElementById("status");
+  let trackText = document.getElementById("trackText");
+
+  if(packed/total >= progress){
     statusBox.style.background="green";
     statusBox.innerText="On Track";
   } else {
@@ -267,7 +266,23 @@ function update(){
     : "Need " + Math.ceil(expected-packed) + " units";
 }
 
-/* INIT */
+/* END SHIFT */
+function endShift(){
+  document.getElementById("mainScreen").style.display="none";
+  document.getElementById("summary").style.display="block";
+
+  let remaining = total - packed;
+  let percent = total ? ((packed/total)*100).toFixed(1) : 0;
+
+  document.getElementById("summary").innerHTML = `
+    <h2>Shift Complete</h2>
+    <p>Packed: ${packed}</p>
+    <p>Remaining (Pushed): ${remaining}</p>
+    <p>Completion: ${percent}%</p>
+    <button onclick="location.reload()">Restart</button>
+  `;
+}
+
 </script>
 
 </body>
