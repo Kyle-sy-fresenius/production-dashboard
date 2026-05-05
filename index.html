@@ -66,35 +66,24 @@ button{
 }
 
 #chartBox{
-  width:160px;
-  height:160px;
+  width:180px;
+  height:180px;
+  margin:auto;
 }
 
-.chartRow{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  gap:8px;
-}
-
-#recentAdds{
-  width:60px;
-  font-size:11px;
-  text-align:left;
-}
+#trackText{margin-top:10px;font-size:14px}
 
 .recentItem{margin:2px 0;}
 .fade{opacity:0.35;}
 
-#trackText{margin-top:10px;font-size:14px}
-
-.fade-number {
-  animation: fadeDown 0.35s ease;
+/* animation */
+.fade-number{
+  animation:fadeDown 0.35s ease;
 }
 
-@keyframes fadeDown {
-  0% {opacity:0; transform:translateY(-10px);}
-  100% {opacity:1; transform:translateY(0);}
+@keyframes fadeDown{
+  0%{opacity:0; transform:translateY(-10px);}
+  100%{opacity:1; transform:translateY(0);}
 }
 </style>
 </head>
@@ -127,15 +116,13 @@ button{
 </div>
 
 <div class="panel">
-  <div class="chartRow">
-    <div id="chartBox">
-      <canvas id="chart"></canvas>
-    </div>
-    <div id="recentAdds"></div>
+  <div id="chartBox">
+    <canvas id="chart"></canvas>
   </div>
 </div>
 
 </div>
+
 </div>
 </div>
 
@@ -145,7 +132,6 @@ const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS
 
 const sb = supabase.createClient(supabaseUrl, supabaseKey);
 
-/* ELEMENTS */
 const startScreen = document.getElementById("startScreen");
 const mainScreen = document.getElementById("mainScreen");
 
@@ -158,13 +144,12 @@ const remainingShow = document.getElementById("remainingShow");
 
 const statusBox = document.getElementById("status");
 const trackText = document.getElementById("trackText");
-const recentAddsEl = document.getElementById("recentAdds");
 
 let total = 0;
 let packed = 0;
-let recentAdds = [];
 let chart;
 
+/* ANIMATION */
 function animateNumber(el, value){
   el.classList.remove("fade-number");
   void el.offsetWidth;
@@ -172,6 +157,7 @@ function animateNumber(el, value){
   el.classList.add("fade-number");
 }
 
+/* START */
 function start(){
   const value = parseFloat(totalInput.value);
   if(isNaN(value) || value <= 0) return;
@@ -179,14 +165,14 @@ function start(){
   total = value;
   packed = 0;
 
-  startScreen.style.display = "none";
-  mainScreen.style.display = "block";
+  startScreen.style.display="none";
+  mainScreen.style.display="block";
 
   createChart();
   update();
-  saveData();
 }
 
+/* CHART (FIXED) */
 function createChart(){
   if(chart) return;
 
@@ -199,26 +185,52 @@ function createChart(){
         backgroundColor:["#00ff88","#ff5252"]
       }]
     },
-    options:{plugins:{legend:{display:false}}}
+
+    options:{
+      plugins:{
+
+        /* LEGEND BACK */
+        legend:{
+          display:true,
+          position:"bottom",
+          labels:{
+            color:"white"
+          }
+        },
+
+        /* PERCENTAGES BACK */
+        datalabels:{
+          color:"white",
+          font:{
+            weight:"bold",
+            size:12
+          },
+          formatter:(value,ctx)=>{
+            let data = ctx.chart.data.datasets[0].data;
+            let sum = data.reduce((a,b)=>a+b,0);
+            if(sum === 0) return "0%";
+            return ((value/sum)*100).toFixed(0) + "%";
+          }
+        }
+      }
+    },
+
+    plugins:[ChartDataLabels]
   });
 }
 
+/* ADD */
 function add(){
   const v = parseFloat(addInput.value);
   if(isNaN(v)) return;
 
   packed += v;
-
-  recentAdds.unshift(v);
-  if(recentAdds.length > 6) recentAdds.pop();
-
   addInput.value = "";
 
   update();
-  updateRecent();
-  saveData();
 }
 
+/* UPDATE */
 function update(){
   if(!chart) return;
 
@@ -240,7 +252,6 @@ function update(){
   timeProgress = Math.max(0,Math.min(1,timeProgress));
 
   let expected = total*timeProgress;
-  let diff = expected-packed;
 
   if(packed/total >= timeProgress){
     statusBox.style.background="green";
@@ -251,66 +262,12 @@ function update(){
   }
 
   trackText.innerText =
-    diff <= 0 ? "On track" : "Need " + Math.ceil(diff) + " units";
+    packed >= expected
+    ? "On track"
+    : "Need " + Math.ceil(expected-packed) + " units";
 }
 
-function updateRecent(){
-  recentAddsEl.innerHTML = recentAdds
-    .map((v,i)=>`<div class="recentItem ${i>2?'fade':''}">+${v}</div>`)
-    .join("");
-}
-
-async function saveData(){
-  try{
-    await sb.from("production_dashboard").upsert({
-      id:1,
-      total,
-      packed,
-      recent_adds: recentAdds
-    });
-  }catch(e){}
-}
-
-async function loadData(){
-  const { data } = await sb
-    .from("production_dashboard")
-    .select("*")
-    .eq("id",1);
-
-  if(!data || !data.length) return;
-
-  const row = data[0];
-
-  total = row.total || 0;
-  packed = row.packed || 0;
-  recentAdds = row.recent_adds || [];
-
-  if(total > 0){
-    startScreen.style.display="none";
-    mainScreen.style.display="block";
-    createChart();
-    update();
-    updateRecent();
-  }
-}
-
-const channel = sb.channel("live");
-
-channel.on("postgres_changes",
-  { event:"*", schema:"public", table:"production_dashboard" },
-  payload => {
-    if(!payload.new) return;
-
-    total = payload.new.total || 0;
-    packed = payload.new.packed || 0;
-    recentAdds = payload.new.recent_adds || [];
-
-    update();
-    updateRecent();
-  }
-).subscribe();
-
-loadData();
+/* INIT */
 </script>
 
 </body>
