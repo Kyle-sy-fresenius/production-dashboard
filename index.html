@@ -2,12 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Production Dashboard</title>
+<title>Production Dashboard (Offline)</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 body{
@@ -19,6 +17,8 @@ body{
   padding:30px;
 }
 
+h1{margin-bottom:20px}
+
 .card{
   width:560px;
   margin:auto;
@@ -28,36 +28,49 @@ body{
   backdrop-filter:blur(10px);
 }
 
-input,button{
+input{
   padding:10px;
-  border-radius:6px;
   border:none;
+  border-radius:6px;
   margin:10px;
+  width:180px;
 }
 
 button{
+  padding:10px 16px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
   background:white;
   font-weight:bold;
-  cursor:pointer;
 }
 
+button:hover{opacity:0.85}
+
+.inline{
+  font-size:20px;
+  margin:10px;
+}
+
+/* FRAME */
 .frame{
   display:flex;
   justify-content:space-between;
+  gap:20px;
   margin-top:20px;
-  gap:15px;
 }
 
 .panel{
-  width:48%;
+  width:50%;
   border:2px solid white;
   border-radius:12px;
   padding:15px;
 }
 
+/* STATUS */
 #status{
-  width:110px;
-  height:110px;
+  width:120px;
+  height:120px;
   border-radius:50%;
   display:flex;
   align-items:center;
@@ -66,17 +79,25 @@ button{
   font-weight:bold;
 }
 
+/* CHART */
 #chartBox{
   width:180px;
   height:180px;
   margin:auto;
+}
+
+/* END BUTTON */
+.bottom{
+  margin-top:25px;
+  display:flex;
+  justify-content:center;
 }
 </style>
 </head>
 
 <body>
 
-<h1>Live Production Dashboard</h1>
+<h1>Production Dashboard (Offline)</h1>
 
 <div class="card">
 
@@ -89,11 +110,13 @@ button{
 <!-- MAIN -->
 <div id="mainScreen" style="display:none;">
 
-  <h3>Total: <span id="totalShow">0</span> |
-      Packed: <span id="packedShow">0</span></h3>
+  <div class="inline">Total: <span id="totalShow">0</span></div>
+  <div class="inline">Packed: <span id="packedShow">0</span></div>
 
-  <input id="addInput" type="number" placeholder="Add units">
-  <button onclick="add()">Add</button>
+  <div>
+    <input id="addInput" type="number" placeholder="Add units">
+    <button onclick="add()">Add</button>
+  </div>
 
   <div class="frame">
 
@@ -115,101 +138,22 @@ button{
 
 <script>
 
-/* ================= SUPABASE ================= */
-
-const supabaseUrl = "https://afakpgezcpvvnvoqcthj.supabase.co";
-const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFmYWtwZ2V6Y3B2dm52b3FjdGhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTY4ODYsImV4cCI6MjA5MzU3Mjg4Nn0.4sJ4VvVG09F0F5wsVlB3Z37v3oo9m0841NcaRr8bo4k";
-
-const sb = supabase.createClient(supabaseUrl, supabaseKey);
-
 /* ================= STATE ================= */
 
 let total = 0;
 let packed = 0;
 let chart;
 
-/* LOAD DATA */
-async function load(){
-
-  let { data } = await sb
-    .from("production")
-    .select("*")
-    .eq("id",1)
-    .single();
-
-  if(data){
-    total = data.total;
-    packed = data.packed;
-
-    document.getElementById("totalShow").innerText = total;
-    document.getElementById("packedShow").innerText = packed;
-
-    updateChart();
-    updateStatus();
-  }
-}
-
-/* START SHIFT */
-async function start(){
+/* START */
+function start(){
 
   total = parseFloat(document.getElementById("totalInput").value);
   if(!total) return;
 
-  await sb.from("production").upsert({
-    id:1,
-    total:total,
-    packed:0
-  });
-
   document.getElementById("startScreen").style.display="none";
   document.getElementById("mainScreen").style.display="block";
 
-  initChart();
-  subscribe();
-  load();
-}
-
-/* ADD UNITS */
-async function add(){
-
-  let v = parseFloat(document.getElementById("addInput").value);
-  if(!v) return;
-
-  // update locally first (instant feedback)
-  packed += v;
-
-  document.getElementById("packedShow").innerText = packed;
-
-  document.getElementById("addInput").value = "";
-
-  updateChart();
-  updateStatus();
-
-  // then push to Supabase
-  const { error } = await sb
-    .from("production")
-    .update({ packed: packed })
-    .eq("id", 1);
-
-  if(error){
-    console.log("DB error:", error);
-    alert("Database update failed");
-  }
-}
-
-/* REALTIME */
-function subscribe(){
-
-  sb.channel("production")
-    .on("postgres_changes",
-      { event:"*", schema:"public", table:"production" },
-      () => load()
-    )
-    .subscribe();
-}
-
-/* CHART */
-function initChart(){
+  document.getElementById("totalShow").innerText = total;
 
   chart = new Chart(document.getElementById("chart"),{
     type:"pie",
@@ -224,22 +168,32 @@ function initChart(){
       plugins:{legend:{display:false}}
     }
   });
+
+  update();
 }
 
-function updateChart(){
+/* ADD UNITS */
+function add(){
 
-  if(!chart) return;
+  let v = parseFloat(document.getElementById("addInput").value);
+  if(!v) return;
 
-  chart.data.datasets[0].data = [
-    packed,
-    Math.max(total-packed,0)
-  ];
+  packed += v;
 
+  document.getElementById("packedShow").innerText = packed;
+  document.getElementById("addInput").value = "";
+
+  update();
+}
+
+/* UPDATE UI */
+function update(){
+
+  let done = Math.min(packed,total);
+  let left = Math.max(total-packed,0);
+
+  chart.data.datasets[0].data = [done,left];
   chart.update();
-}
-
-/* STATUS */
-function updateStatus(){
 
   let progress = packed / total;
   let box = document.getElementById("status");
@@ -257,9 +211,6 @@ function updateStatus(){
     box.innerText="Behind";
   }
 }
-
-/* INITIAL LOAD */
-load();
 
 </script>
 
