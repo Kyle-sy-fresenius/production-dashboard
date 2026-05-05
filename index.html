@@ -39,7 +39,6 @@ button{
   cursor:pointer;
 }
 
-/* layout */
 .frame{
   display:flex;
   justify-content:space-between;
@@ -58,10 +57,10 @@ button{
   justify-content:center;
 }
 
-/* 🔥 BOTH CIRCLES SAME SIZE */
+/* 🔥 MATCHED SIZE SYSTEM (IMPORTANT) */
 #status{
-  width:150px;
-  height:150px;
+  width:120px;
+  height:120px;
   border-radius:50%;
   display:flex;
   align-items:center;
@@ -70,19 +69,18 @@ button{
 }
 
 #chartBox{
-  width:150px;
-  height:150px;
+  width:120px;
+  height:120px;
   display:flex;
   align-items:center;
   justify-content:center;
 }
 
 canvas{
-  width:150px !important;
-  height:150px !important;
+  width:120px !important;
+  height:120px !important;
 }
 
-/* summary */
 #summary{
   display:none;
   margin-top:20px;
@@ -190,7 +188,7 @@ function createChart(){
             color:"white",
             font:{size:10},
             boxWidth:10,
-            padding:8
+            padding:6
           }
         },
 
