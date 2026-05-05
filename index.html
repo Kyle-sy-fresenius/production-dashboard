@@ -40,6 +40,7 @@ button{
   cursor:pointer;
 }
 
+/* layout */
 .frame{
   display:flex;
   justify-content:space-between;
@@ -52,8 +53,13 @@ button{
   border:2px solid white;
   border-radius:12px;
   padding:15px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
 }
 
+/* ✅ BOTH CIRCLES EXACT SAME SIZE */
 #status{
   width:140px;
   height:140px;
@@ -61,40 +67,22 @@ button{
   display:flex;
   align-items:center;
   justify-content:center;
-  margin:auto;
   font-weight:bold;
 }
 
-/* chart */
+/* chart wrapper MUST NOT shrink */
 #chartBox{
   width:140px;
   height:140px;
-  margin:auto;
   display:flex;
-  justify-content:center;
   align-items:center;
-  gap:10px;
+  justify-content:center;
 }
 
+/* FORCE CANVAS TO MATCH EXACT SIZE */
 canvas{
   width:140px !important;
   height:140px !important;
-}
-
-/* SIDE LIST (RESTORED) */
-#recentAdds{
-  font-size:11px;
-  text-align:left;
-  max-height:140px;
-  overflow:hidden;
-}
-
-.recentItem{
-  margin:2px 0;
-}
-
-.fade{
-  opacity:0.35;
 }
 
 /* summary */
@@ -111,11 +99,13 @@ canvas{
 
 <div class="card">
 
+<!-- START -->
 <div id="startScreen">
   <input id="totalInput" type="number" placeholder="Total units">
   <button onclick="start()">Start</button>
 </div>
 
+<!-- MAIN -->
 <div id="mainScreen" style="display:none;">
 
 <div>Total: <span id="totalShow">0</span></div>
@@ -127,24 +117,17 @@ canvas{
 
 <div class="frame">
 
+<!-- STATUS CIRCLE -->
 <div class="panel">
   <div id="status">--</div>
   <div id="trackText">--</div>
 </div>
 
+<!-- PIE CHART CIRCLE -->
 <div class="panel">
-
-  <div style="display:flex;justify-content:center;align-items:center;">
-    
-    <div id="chartBox">
-      <canvas id="chart"></canvas>
-    </div>
-
-    <!-- SIDE LIST RESTORED -->
-    <div id="recentAdds"></div>
-
+  <div id="chartBox">
+    <canvas id="chart"></canvas>
   </div>
-
 </div>
 
 </div>
@@ -155,6 +138,7 @@ canvas{
 
 </div>
 
+<!-- SUMMARY -->
 <div id="summary"></div>
 
 </div>
@@ -169,7 +153,6 @@ const sb = supabase.createClient(
 let total = 0;
 let packed = 0;
 let chart;
-let recentAdds = [];
 
 /* START */
 function start(){
@@ -201,7 +184,11 @@ function createChart(){
     },
 
     options:{
+      responsive:false,
+      maintainAspectRatio:false,
+
       layout:{padding:0},
+
       plugins:{
         legend:{
           display:true,
@@ -213,14 +200,15 @@ function createChart(){
             padding:6
           }
         },
+
         datalabels:{
           color:"white",
           font:{weight:"bold",size:10},
           formatter:(value,ctx)=>{
             let data = ctx.chart.data.datasets[0].data;
             let sum = data.reduce((a,b)=>a+b,0);
-            if(sum===0) return "0%";
-            return ((value/sum)*100).toFixed(0)+"%";
+            if(sum === 0) return "0%";
+            return ((value/sum)*100).toFixed(0) + "%";
           }
         }
       }
@@ -236,26 +224,9 @@ function add(){
   if(isNaN(v)) return;
 
   packed += v;
-
-  recentAdds.unshift(v);
-  if(recentAdds.length > 8) recentAdds.pop();
-
   document.getElementById("addInput").value="";
 
   update();
-  renderRecent();
-}
-
-/* SIDE LIST RENDER */
-function renderRecent(){
-  let html = "";
-
-  recentAdds.forEach((v,i)=>{
-    let cls = i>=4 ? "fade" : "";
-    html += `<div class="recentItem ${cls}">+${v}</div>`;
-  });
-
-  document.getElementById("recentAdds").innerHTML = html;
 }
 
 /* UPDATE */
@@ -291,7 +262,7 @@ function update(){
     : "Need " + Math.ceil(expected-packed) + " units";
 }
 
-/* END */
+/* END SHIFT */
 function endShift(){
   document.getElementById("mainScreen").style.display="none";
   document.getElementById("summary").style.display="block";
