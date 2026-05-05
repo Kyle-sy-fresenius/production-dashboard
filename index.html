@@ -40,11 +40,6 @@ button{
   cursor:pointer;
 }
 
-.inline{
-  font-size:20px;
-  margin:10px;
-}
-
 .frame{
   display:flex;
   justify-content:space-between;
@@ -83,35 +78,13 @@ button{
 }
 
 #recentAdds{
-  width:55px;
+  width:60px;
   font-size:11px;
   text-align:left;
 }
 
-.recentItem{
-  margin:3px 0;
-  font-weight:bold;
-}
-
-.fade{
-  opacity:0.35;
-}
-
-#trackText{
-  margin-top:10px;
-  font-size:14px;
-}
-
-.bottom{
-  margin-top:25px;
-  display:flex;
-  justify-content:center;
-}
-
-#summary{
-  display:none;
-  margin-top:20px;
-}
+.recentItem{margin:2px 0;}
+.fade{opacity:0.35;}
 </style>
 </head>
 
@@ -122,37 +95,172 @@ button{
 <div class="card">
 
 <div id="startScreen">
-  <p>Enter total units for today's production:</p>
-  <input id="totalInput" type="number">
+  <input id="totalInput" type="number" placeholder="Total units">
   <button onclick="start()">Start</button>
 </div>
 
 <div id="mainScreen" style="display:none;">
 
-  <div class="inline">Total: <span id="totalShow">0</span></div>
-  <div class="inline">Packed: <span id="packedShow">0</span></div>
-  <div class="inline">Remaining: <span id="remainingShow">0</span></div>
+<div>Total: <span id="totalShow">0</span></div>
+<div>Packed: <span id="packedShow">0</span></div>
+<div>Remaining: <span id="remainingShow">0</span></div>
 
-  <div>
-    <input id="addInput" type="number" placeholder="Add units">
-    <button onclick="add()">Add</button>
-  </div>
+<input id="addInput" type="number" placeholder="Add units">
+<button onclick="add()">Add</button>
 
-  <div class="frame">
+<div class="frame">
 
-    <div class="panel">
-      <div id="status">--</div>
-      <div id="trackText">--</div>
+<div class="panel">
+  <div id="status">--</div>
+  <div id="trackText">--</div>
+</div>
+
+<div class="panel">
+  <div class="chartRow">
+    <div id="chartBox">
+      <canvas id="chart"></canvas>
     </div>
+    <div id="recentAdds"></div>
+  </div>
+</div>
 
-    <div class="panel">
-      <div style="font-size:12px;margin-bottom:8px;">🟢 Packed | 🔴 Remaining</div>
+</div>
 
-      <div class="chartRow">
-        <div id="chartBox">
-          <canvas id="chart"></canvas>
-        </div>
+</div>
+</div>
 
-        <div id="recentAdds"></div>
-      </div>
-    </div
+<script>
+const supabase = window.supabase.createClient(
+  "https://afakpgezcpvvnvoqcthj.supabase.co",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFmYWtwZ2V6Y3B2dm52b3FjdGhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTY4ODYsImV4cCI6MjA5MzU3Mjg4Nn0.4sJ4VvVG09F0F5wsVlB3Z37v3oo9m0841NcaRr8bo4k"
+);
+
+let total=0;
+let packed=0;
+let chart;
+let recentAdds=[];
+
+/* LOAD */
+async function loadData(){
+  const { data } = await supabase
+    .from("production_dashboard")
+    .select("*")
+    .eq("id",1)
+    .single();
+
+  if(!data) return;
+
+  total=data.total||0;
+  packed=data.packed||0;
+  recentAdds=data.recent_adds||[];
+
+  updateRecentAdds();
+
+  if(total>0){
+    startScreen.style.display="none";
+    mainScreen.style.display="block";
+    createChart();
+    update();
+  }
+}
+
+/* SAVE */
+async function saveData(){
+  await supabase
+    .from("production_dashboard")
+    .upsert({
+      id:1,
+      total,
+      packed,
+      recent_adds:recentAdds,
+      updated_at:new Date().toISOString()
+    });
+}
+
+/* START */
+function start(){
+  total=parseFloat(totalInput.value);
+  if(!total) return;
+
+  packed=0;
+
+  startScreen.style.display="none";
+  mainScreen.style.display="block";
+
+  createChart();
+  update();
+  saveData();
+}
+
+/* CHART */
+function createChart(){
+  chart=new Chart(document.getElementById("chart"),{
+    type:"pie",
+    data:{
+      labels:["Packed","Remaining"],
+      datasets:[{
+        data:[0,total],
+        backgroundColor:["#00ff88","#ff5252"]
+      }]
+    }
+  });
+}
+
+/* ADD */
+function add(){
+  let v=parseFloat(addInput.value);
+  if(!v) return;
+
+  packed+=v;
+
+  recentAdds.unshift(v);
+  if(recentAdds.length>6) recentAdds.pop();
+
+  updateRecentAdds();
+
+  addInput.value="";
+  update();
+  saveData();
+}
+
+/* UPDATE */
+function update(){
+  totalShow.innerText=total;
+  packedShow.innerText=packed;
+  remainingShow.innerText=Math.max(total-packed,0);
+
+  chart.data.datasets[0].data=[packed,total-packed];
+  chart.update();
+}
+
+/* RECENT */
+function updateRecentAdds(){
+  let html="";
+  recentAdds.forEach((v,i)=>{
+    let cls=i>=3?"fade":"";
+    html+=`<div class="recentItem ${cls}">+${v}</div>`;
+  });
+  recentAddsEl=document.getElementById("recentAdds");
+  if(recentAddsEl) recentAddsEl.innerHTML=html;
+}
+
+/* REALTIME */
+supabase
+.channel("live")
+.on("postgres_changes",
+{event:"*",schema:"public",table:"production_dashboard"},
+payload=>{
+  total=payload.new.total;
+  packed=payload.new.packed;
+  recentAdds=payload.new.recent_adds||[];
+
+  update();
+  updateRecentAdds();
+})
+.subscribe();
+
+loadData();
+</script>
+
+</body>
+</html>
