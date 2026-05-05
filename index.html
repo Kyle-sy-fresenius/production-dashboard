@@ -17,8 +17,6 @@ body{
   padding:30px;
 }
 
-h1{margin-bottom:20px}
-
 .card{
   width:560px;
   margin:auto;
@@ -28,22 +26,17 @@ h1{margin-bottom:20px}
   backdrop-filter:blur(10px);
 }
 
-/* INPUTS */
-input{
+input,button{
   padding:10px;
   border:none;
   border-radius:6px;
   margin:10px;
-  width:180px;
 }
 
 button{
-  padding:10px 16px;
-  border:none;
-  border-radius:6px;
-  cursor:pointer;
   background:white;
   font-weight:bold;
+  cursor:pointer;
 }
 
 button:hover{opacity:0.85}
@@ -53,7 +46,7 @@ button:hover{opacity:0.85}
   margin:10px;
 }
 
-/* OUTLINE FRAME ONLY */
+/* FRAME */
 .frame{
   display:flex;
   justify-content:space-between;
@@ -68,7 +61,7 @@ button:hover{opacity:0.85}
   padding:15px;
 }
 
-/* STATUS CIRCLE */
+/* STATUS */
 #status{
   width:120px;
   height:120px;
@@ -85,6 +78,18 @@ button:hover{opacity:0.85}
   width:180px;
   height:180px;
   margin:auto;
+}
+
+/* LEGEND */
+#legend{
+  font-size:12px;
+  margin-bottom:10px;
+}
+
+/* TRACK TEXT */
+#trackText{
+  margin-top:10px;
+  font-size:14px;
 }
 
 /* END BUTTON */
@@ -108,18 +113,18 @@ button:hover{opacity:0.85}
 
 <div class="card">
 
-<!-- START SCREEN -->
+<!-- START -->
 <div id="startScreen">
   <p>Enter total units for today's production:</p>
   <input id="totalInput" type="number">
   <button onclick="start()">Start</button>
 </div>
 
-<!-- MAIN SCREEN -->
+<!-- MAIN -->
 <div id="mainScreen" style="display:none;">
 
-  <div class="inline">Total: <span id="totalShow">0</span></div>
-  <div class="inline">Packed: <span id="packedShow">0</span></div>
+  <div class="inline">Total: <span id="totalShow"></span></div>
+  <div class="inline">Packed: <span id="packedShow"></span></div>
 
   <div>
     <input id="addInput" type="number" placeholder="Add units">
@@ -128,14 +133,21 @@ button:hover{opacity:0.85}
 
   <div class="frame">
 
+    <!-- STATUS -->
     <div class="panel">
       <div id="status">--</div>
+      <div id="trackText">--</div>
     </div>
 
+    <!-- PIE -->
     <div class="panel">
+
+      <div id="legend">🟢 Packed | 🔴 Remaining</div>
+
       <div id="chartBox">
         <canvas id="chart"></canvas>
       </div>
+
     </div>
 
   </div>
@@ -155,10 +167,9 @@ button:hover{opacity:0.85}
 
 <script>
 
-/* ================= STATE ================= */
-
-let total = 0;
-let packed = 0;
+/* STATE */
+let total=0;
+let packed=0;
 let chart;
 
 /* START */
@@ -170,7 +181,7 @@ function start(){
   document.getElementById("startScreen").style.display="none";
   document.getElementById("mainScreen").style.display="block";
 
-  document.getElementById("totalShow").innerText = total;
+  document.getElementById("totalShow").innerText=total;
 
   chart = new Chart(document.getElementById("chart"),{
     type:"pie",
@@ -182,14 +193,25 @@ function start(){
       }]
     },
     options:{
-      plugins:{legend:{display:false}}
-    }
+      plugins:{
+        legend:{display:false},
+        datalabels:{
+          color:"white",
+          formatter:(value,ctx)=>{
+            let data = ctx.chart.data.datasets[0].data;
+            let sum = data[0] + data[1];
+            return ((value/sum)*100).toFixed(0) + "%";
+          }
+        }
+      }
+    },
+    plugins:[ChartDataLabels]
   });
 
   update();
 }
 
-/* ADD UNITS */
+/* ADD */
 function add(){
 
   let v = parseFloat(document.getElementById("addInput").value);
@@ -197,13 +219,13 @@ function add(){
 
   packed += v;
 
-  document.getElementById("packedShow").innerText = packed;
-  document.getElementById("addInput").value = "";
+  document.getElementById("packedShow").innerText=packed;
+  document.getElementById("addInput").value="";
 
   update();
 }
 
-/* UPDATE UI */
+/* UPDATE (TIME BASED) */
 function update(){
 
   let done = Math.min(packed,total);
@@ -212,36 +234,62 @@ function update(){
   chart.data.datasets[0].data = [done,left];
   chart.update();
 
+  /* ===== TIME LOGIC ===== */
+
+  const now = new Date();
+
+  const start = new Date();
+  start.setHours(8,30,0,0);
+
+  const end = new Date();
+  end.setHours(21,30,0,0);
+
+  let timeProgress = (now - start) / (end - start);
+  timeProgress = Math.max(0,Math.min(1,timeProgress));
+
+  let expected = total * timeProgress;
+
+  let diff = expected - packed;
+
+  /* ===== STATUS ===== */
+
   let progress = packed / total;
   let box = document.getElementById("status");
 
-  if(progress >= 0.9){
+  if(progress >= timeProgress){
     box.style.background="green";
     box.innerText="On Track";
   }
-  else if(progress >= 0.7){
+  else if(progress >= timeProgress - 0.1){
     box.style.background="orange";
-    box.innerText="Warning";
+    box.innerText="Slightly Behind";
   }
   else{
     box.style.background="red";
     box.innerText="Behind";
   }
+
+  /* ===== TRACK TEXT ===== */
+
+  document.getElementById("trackText").innerText =
+    diff <= 0
+    ? "On track for shift pace"
+    : "Need " + Math.ceil(diff) + " units to be on track";
 }
 
 /* END SHIFT */
 function endShift(){
 
   let pushed = total - packed;
-  let percent = total > 0 ? ((packed/total)*100).toFixed(1) : 0;
+  let percent = ((packed/total)*100).toFixed(1);
 
   document.getElementById("mainScreen").style.display="none";
   document.getElementById("summary").style.display="block";
 
-  document.getElementById("summary").innerHTML = `
+  document.getElementById("summary").innerHTML=`
     <h2>Shift Complete</h2>
     <p>Packed: ${packed}</p>
-    <p>Pushed (Remaining): ${pushed}</p>
+    <p>Remaining: ${pushed}</p>
     <p>Completion: ${percent}%</p>
     <button onclick="location.reload()">Restart</button>
   `;
