@@ -40,7 +40,6 @@ button{
   cursor:pointer;
 }
 
-/* layout */
 .frame{
   display:flex;
   justify-content:space-between;
@@ -55,10 +54,9 @@ button{
   padding:15px;
 }
 
-/* status circle */
 #status{
-  width:120px;
-  height:120px;
+  width:140px;
+  height:140px;
   border-radius:50%;
   display:flex;
   align-items:center;
@@ -67,22 +65,39 @@ button{
   font-weight:bold;
 }
 
-/* chart sizing FIX */
+/* chart */
 #chartBox{
-  width:120px;
-  height:120px;
+  width:140px;
+  height:140px;
   margin:auto;
   display:flex;
   justify-content:center;
   align-items:center;
+  gap:10px;
 }
 
 canvas{
-  width:120px !important;
-  height:120px !important;
+  width:140px !important;
+  height:140px !important;
 }
 
-/* END SCREEN */
+/* SIDE LIST (RESTORED) */
+#recentAdds{
+  font-size:11px;
+  text-align:left;
+  max-height:140px;
+  overflow:hidden;
+}
+
+.recentItem{
+  margin:2px 0;
+}
+
+.fade{
+  opacity:0.35;
+}
+
+/* summary */
 #summary{
   display:none;
   margin-top:20px;
@@ -96,13 +111,11 @@ canvas{
 
 <div class="card">
 
-<!-- START -->
 <div id="startScreen">
   <input id="totalInput" type="number" placeholder="Total units">
   <button onclick="start()">Start</button>
 </div>
 
-<!-- MAIN -->
 <div id="mainScreen" style="display:none;">
 
 <div>Total: <span id="totalShow">0</span></div>
@@ -114,17 +127,24 @@ canvas{
 
 <div class="frame">
 
-<!-- STATUS -->
 <div class="panel">
   <div id="status">--</div>
   <div id="trackText">--</div>
 </div>
 
-<!-- CHART -->
 <div class="panel">
-  <div id="chartBox">
-    <canvas id="chart"></canvas>
+
+  <div style="display:flex;justify-content:center;align-items:center;">
+    
+    <div id="chartBox">
+      <canvas id="chart"></canvas>
+    </div>
+
+    <!-- SIDE LIST RESTORED -->
+    <div id="recentAdds"></div>
+
   </div>
+
 </div>
 
 </div>
@@ -135,12 +155,12 @@ canvas{
 
 </div>
 
-<!-- SUMMARY -->
 <div id="summary"></div>
 
 </div>
 
 <script>
+
 const sb = supabase.createClient(
   "https://afakpgezcpvvnvoqcthj.supabase.co",
   "YOUR_ANON_KEY"
@@ -149,6 +169,7 @@ const sb = supabase.createClient(
 let total = 0;
 let packed = 0;
 let chart;
+let recentAdds = [];
 
 /* START */
 function start(){
@@ -180,11 +201,11 @@ function createChart(){
     },
 
     options:{
+      layout:{padding:0},
       plugins:{
         legend:{
           display:true,
           position:"bottom",
-          align:"center",
           labels:{
             color:"white",
             font:{size:10},
@@ -192,15 +213,14 @@ function createChart(){
             padding:6
           }
         },
-
         datalabels:{
           color:"white",
           font:{weight:"bold",size:10},
           formatter:(value,ctx)=>{
             let data = ctx.chart.data.datasets[0].data;
             let sum = data.reduce((a,b)=>a+b,0);
-            if(sum === 0) return "0%";
-            return ((value/sum)*100).toFixed(0) + "%";
+            if(sum===0) return "0%";
+            return ((value/sum)*100).toFixed(0)+"%";
           }
         }
       }
@@ -216,13 +236,29 @@ function add(){
   if(isNaN(v)) return;
 
   packed += v;
+
+  recentAdds.unshift(v);
+  if(recentAdds.length > 8) recentAdds.pop();
+
   document.getElementById("addInput").value="";
 
   update();
-  save();
+  renderRecent();
 }
 
-/* UPDATE UI */
+/* SIDE LIST RENDER */
+function renderRecent(){
+  let html = "";
+
+  recentAdds.forEach((v,i)=>{
+    let cls = i>=4 ? "fade" : "";
+    html += `<div class="recentItem ${cls}">+${v}</div>`;
+  });
+
+  document.getElementById("recentAdds").innerHTML = html;
+}
+
+/* UPDATE */
 function update(){
   document.getElementById("totalShow").innerText = total;
   document.getElementById("packedShow").innerText = packed;
@@ -246,13 +282,8 @@ function update(){
   let status = document.getElementById("status");
   let track = document.getElementById("trackText");
 
-  if(packed/total >= progress){
-    status.style.background="green";
-    status.innerText="On Track";
-  } else {
-    status.style.background="red";
-    status.innerText="Behind";
-  }
+  status.style.background = packed/total >= progress ? "green" : "red";
+  status.innerText = packed/total >= progress ? "On Track" : "Behind";
 
   track.innerText =
     packed >= expected
@@ -260,47 +291,7 @@ function update(){
     : "Need " + Math.ceil(expected-packed) + " units";
 }
 
-/* SAVE */
-async function save(){
-  await sb.from("production_dashboard").upsert({
-    id:1,
-    total,
-    packed
-  });
-}
-
-/* REALTIME */
-sb.channel("live")
-.on("postgres_changes",
-  { event:"*", schema:"public", table:"production_dashboard" },
-  payload => {
-    if(!payload.new) return;
-
-    total = payload.new.total || 0;
-    packed = payload.new.packed || 0;
-
-    update();
-  }
-)
-.subscribe();
-
-/* 🔁 FALLBACK SYNC (fix phone issue) */
-setInterval(async () => {
-  const { data } = await sb
-    .from("production_dashboard")
-    .select("*")
-    .eq("id",1)
-    .single();
-
-  if(!data) return;
-
-  total = data.total || 0;
-  packed = data.packed || 0;
-
-  update();
-}, 5000);
-
-/* END SHIFT */
+/* END */
 function endShift(){
   document.getElementById("mainScreen").style.display="none";
   document.getElementById("summary").style.display="block";
@@ -316,6 +307,7 @@ function endShift(){
     <button onclick="location.reload()">Restart</button>
   `;
 }
+
 </script>
 
 </body>
