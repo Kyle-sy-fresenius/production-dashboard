@@ -6,7 +6,6 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 body{
@@ -40,7 +39,6 @@ button{
   cursor:pointer;
 }
 
-/* layout */
 .frame{
   display:flex;
   justify-content:space-between;
@@ -59,10 +57,10 @@ button{
   justify-content:center;
 }
 
-/* ✅ BOTH CIRCLES EXACT SAME SIZE */
+/* 🔥 MATCH BOTH CIRCLES EXACTLY */
 #status{
-  width:140px;
-  height:140px;
+  width:120px;
+  height:120px;
   border-radius:50%;
   display:flex;
   align-items:center;
@@ -70,19 +68,17 @@ button{
   font-weight:bold;
 }
 
-/* chart wrapper MUST NOT shrink */
 #chartBox{
-  width:140px;
-  height:140px;
+  width:120px;
+  height:120px;
   display:flex;
   align-items:center;
   justify-content:center;
 }
 
-/* FORCE CANVAS TO MATCH EXACT SIZE */
 canvas{
-  width:140px !important;
-  height:140px !important;
+  width:120px !important;
+  height:120px !important;
 }
 
 /* summary */
@@ -99,13 +95,11 @@ canvas{
 
 <div class="card">
 
-<!-- START -->
 <div id="startScreen">
   <input id="totalInput" type="number" placeholder="Total units">
   <button onclick="start()">Start</button>
 </div>
 
-<!-- MAIN -->
 <div id="mainScreen" style="display:none;">
 
 <div>Total: <span id="totalShow">0</span></div>
@@ -117,13 +111,11 @@ canvas{
 
 <div class="frame">
 
-<!-- STATUS CIRCLE -->
 <div class="panel">
   <div id="status">--</div>
   <div id="trackText">--</div>
 </div>
 
-<!-- PIE CHART CIRCLE -->
 <div class="panel">
   <div id="chartBox">
     <canvas id="chart"></canvas>
@@ -138,17 +130,11 @@ canvas{
 
 </div>
 
-<!-- SUMMARY -->
 <div id="summary"></div>
 
 </div>
 
 <script>
-
-const sb = supabase.createClient(
-  "https://afakpgezcpvvnvoqcthj.supabase.co",
-  "YOUR_ANON_KEY"
-);
 
 let total = 0;
 let packed = 0;
@@ -174,41 +160,32 @@ function createChart(){
   if(chart) return;
 
   chart = new Chart(document.getElementById("chart"),{
-    type:"pie",
+    type:"doughnut",
+
     data:{
       labels:["Packed","Remaining"],
       datasets:[{
         data:[0,total],
-        backgroundColor:["#00ff88","#ff5252"]
+        backgroundColor:["#00ff88","#ff5252"],
+        borderWidth:0
       }]
     },
 
     options:{
       responsive:false,
       maintainAspectRatio:false,
-
-      layout:{padding:0},
+      cutout:"0%",
 
       plugins:{
-        legend:{
-          display:true,
-          position:"bottom",
-          labels:{
-            color:"white",
-            font:{size:10},
-            boxWidth:8,
-            padding:6
-          }
-        },
-
+        legend:{display:false},
         datalabels:{
           color:"white",
-          font:{weight:"bold",size:10},
+          font:{size:10,weight:"bold"},
           formatter:(value,ctx)=>{
             let data = ctx.chart.data.datasets[0].data;
             let sum = data.reduce((a,b)=>a+b,0);
-            if(sum === 0) return "0%";
-            return ((value/sum)*100).toFixed(0) + "%";
+            if(sum===0) return "0%";
+            return ((value/sum)*100).toFixed(0)+"%";
           }
         }
       }
