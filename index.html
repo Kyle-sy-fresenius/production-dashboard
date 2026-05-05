@@ -6,6 +6,7 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 body{
@@ -57,9 +58,7 @@ button{
   justify-content:center;
 }
 
-/* =========================
-   🔥 GLOWING STATUS RING
-========================= */
+/* STATUS GLOWING RING */
 #status{
   width:120px;
   height:120px;
@@ -72,13 +71,12 @@ button{
   box-shadow:0 0 10px rgba(255,255,255,0.2);
 }
 
-/* CHART */
+/* PIE */
 #chartBox{
   width:160px;
   height:160px;
 }
 
-/* RECENT LIST */
 #recentAdds{
   width:60px;
   font-size:11px;
@@ -92,6 +90,11 @@ button{
   margin-top:10px;
   font-size:14px;
 }
+
+#summary{
+  display:none;
+  margin-top:20px;
+}
 </style>
 </head>
 
@@ -101,11 +104,13 @@ button{
 
 <div class="card">
 
+<!-- START -->
 <div id="startScreen">
   <input id="totalInput" type="number" placeholder="Total units">
   <button onclick="start()">Start</button>
 </div>
 
+<!-- MAIN -->
 <div id="mainScreen" style="display:none;">
 
 <div>Total: <span id="totalShow">0</span></div>
@@ -117,7 +122,7 @@ button{
 
 <div class="frame">
 
-<!-- STATUS (GLOWING RING) -->
+<!-- STATUS -->
 <div class="panel">
   <div id="status">--</div>
   <div id="trackText">--</div>
@@ -126,30 +131,86 @@ button{
 <!-- PIE + LEGEND + LIST -->
 <div class="panel">
 
-  <div style="font-size:12px;margin-bottom:6px;">
-    🟢 Packed | 🔴 Remaining
+<div style="font-size:12px;margin-bottom:5px;">
+🟢 Packed | 🔴 Remaining
+</div>
+
+<div style="display:flex;gap:10px;align-items:center;">
+  <div id="chartBox">
+    <canvas id="chart"></canvas>
   </div>
 
-  <div class="chartRow">
-    <div id="chartBox">
-      <canvas id="chart"></canvas>
-    </div>
-
-    <div id="recentAdds"></div>
-  </div>
-
+  <div id="recentAdds"></div>
 </div>
 
 </div>
+
+</div>
+
+<button onclick="endShift()" style="margin-top:20px;background:#ff4d4d;color:white;">
+  End Production
+</button>
+
+</div>
+
+<div id="summary"></div>
 
 </div>
 
 <script>
 
+/* =========================
+   SUPABASE SETUP
+========================= */
+const sb = supabase.createClient(
+  "https://afakpgezcpvvnvoqcthj.supabase.co",
+  "YOUR_ANON_KEY"
+);
+
+/* STATE */
 let total = 0;
 let packed = 0;
 let recentAdds = [];
 let chart;
+
+/* =========================
+   LOAD DATA (FIXED)
+========================= */
+async function loadData(){
+  const { data } = await sb
+    .from("production_dashboard")
+    .select("*")
+    .eq("id",1)
+    .maybeSingle();
+
+  if(data){
+    total = data.total || 0;
+    packed = data.packed || 0;
+    recentAdds = data.recent_adds || [];
+  }
+
+  if(total > 0){
+    startScreen.style.display="none";
+    mainScreen.style.display="block";
+    createChart();
+    update();
+    updateRecent();
+  }
+}
+
+loadData();
+
+/* =========================
+   SAVE DATA (FIXED)
+========================= */
+async function saveData(){
+  await sb.from("production_dashboard").upsert({
+    id:1,
+    total,
+    packed,
+    recent_adds: recentAdds
+  });
+}
 
 /* START */
 function start(){
@@ -159,11 +220,12 @@ function start(){
   total = v;
   packed = 0;
 
-  document.getElementById("startScreen").style.display="none";
-  document.getElementById("mainScreen").style.display="block";
+  startScreen.style.display="none";
+  mainScreen.style.display="block";
 
   createChart();
   update();
+  saveData();
 }
 
 /* CHART */
@@ -200,7 +262,7 @@ function createChart(){
 }
 
 /* ADD */
-function add(){
+async function add(){
   const v = parseFloat(document.getElementById("addInput").value);
   if(isNaN(v)) return;
 
@@ -213,13 +275,15 @@ function add(){
 
   update();
   updateRecent();
+
+  await saveData();
 }
 
 /* UPDATE */
 function update(){
-  document.getElementById("totalShow").innerText = total;
-  document.getElementById("packedShow").innerText = packed;
-  document.getElementById("remainingShow").innerText = Math.max(total-packed,0);
+  totalShow.innerText = total;
+  packedShow.innerText = packed;
+  remainingShow.innerText = Math.max(total-packed,0);
 
   chart.data.datasets[0].data = [
     Math.min(packed,total),
@@ -227,7 +291,6 @@ function update(){
   ];
   chart.update();
 
-  /* TIME BASED TRACKING */
   const now = new Date();
   const start = new Date(); start.setHours(8,30,0,0);
   const end = new Date(); end.setHours(21,30,0,0);
@@ -242,35 +305,48 @@ function update(){
 
   let ratio = total ? packed/total : 0;
 
-  /* 🔥 GLOWING STATUS RING */
   if(ratio >= timeProgress){
-    status.style.background="rgba(0,255,136,0.15)";
-    status.style.boxShadow="0 0 18px #00ff88";
-    status.style.border="2px solid #00ff88";
+    status.style.background="rgba(0,255,136,0.2)";
+    status.style.boxShadow="0 0 15px #00ff88";
     status.innerText="On Track";
   } else {
-    status.style.background="rgba(255,0,0,0.15)";
-    status.style.boxShadow="0 0 18px red";
-    status.style.border="2px solid red";
+    status.style.background="rgba(255,0,0,0.2)";
+    status.style.boxShadow="0 0 15px red";
     status.innerText="Behind";
   }
 
   track.innerText =
     packed >= expected
-    ? "On track for shift pace"
+    ? "On track"
     : "Need " + Math.ceil(expected-packed) + " units";
 }
 
-/* RECENT LIST */
+/* RECENT */
 function updateRecent(){
   let html = "";
 
   recentAdds.forEach((v,i)=>{
-    let cls = i>=3 ? "fade" : "";
-    html += `<div class="recentItem ${cls}">+${v}</div>`;
+    html += `<div class="recentItem ${i>=3?'fade':''}">+${v}</div>`;
   });
 
   document.getElementById("recentAdds").innerHTML = html;
+}
+
+/* END SHIFT */
+function endShift(){
+  mainScreen.style.display="none";
+  summary.style.display="block";
+
+  const remaining = total - packed;
+  const percent = total ? ((packed/total)*100).toFixed(1) : 0;
+
+  summary.innerHTML = `
+    <h2>Shift Complete</h2>
+    <p>Packed: ${packed}</p>
+    <p>Remaining: ${remaining}</p>
+    <p>Completion: ${percent}%</p>
+    <button onclick="location.reload()">Restart</button>
+  `;
 }
 
 </script>
