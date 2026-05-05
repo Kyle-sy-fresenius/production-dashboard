@@ -34,7 +34,11 @@ input,button{
   margin:10px;
 }
 
-button{background:white;font-weight:bold;cursor:pointer}
+button{
+  background:white;
+  font-weight:bold;
+  cursor:pointer;
+}
 
 .frame{
   display:flex;
@@ -61,7 +65,10 @@ button{background:white;font-weight:bold;cursor:pointer}
   font-weight:bold;
 }
 
-#chartBox{width:160px;height:160px}
+#chartBox{
+  width:160px;
+  height:160px;
+}
 
 .chartRow{
   display:flex;
@@ -80,6 +87,24 @@ button{background:white;font-weight:bold;cursor:pointer}
 .fade{opacity:0.35;}
 
 #trackText{margin-top:10px;font-size:14px}
+
+/* =========================
+   🔥 NUMBER FADE ANIMATION
+========================= */
+.fade-number {
+  animation: fadeDown 0.35s ease;
+}
+
+@keyframes fadeDown {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 </style>
 </head>
 
@@ -129,18 +154,20 @@ const { createClient } = supabase;
 
 const sb = createClient(
   "https://afakpgezcpvvnvoqcthj.supabase.co",
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFmYWtwZ2V6Y3B2dm52b3FjdGhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTY4ODYsImV4cCI6MjA5MzU3Mjg4Nn0.4sJ4VvVG09F0F5wsVlB3Z37v3oo9m0841NcaRr8bo4k"
+  "YOUR_ANON_KEY"
 );
 
 /* ELEMENTS */
 const startScreen = document.getElementById("startScreen");
 const mainScreen = document.getElementById("mainScreen");
+
 const totalInput = document.getElementById("totalInput");
 const addInput = document.getElementById("addInput");
 
 const totalShow = document.getElementById("totalShow");
 const packedShow = document.getElementById("packedShow");
 const remainingShow = document.getElementById("remainingShow");
+
 const recentAddsEl = document.getElementById("recentAdds");
 const statusBox = document.getElementById("status");
 const trackText = document.getElementById("trackText");
@@ -150,6 +177,16 @@ let total = 0;
 let packed = 0;
 let recentAdds = [];
 let chart;
+
+/* =========================
+   🔥 FADE FUNCTION
+========================= */
+function animateNumber(el, value){
+  el.classList.remove("fade-number");
+  void el.offsetWidth;
+  el.innerText = value;
+  el.classList.add("fade-number");
+}
 
 /* LOAD */
 async function loadData(){
@@ -252,9 +289,9 @@ function add(){
 function update(){
   if(!chart || total === 0) return;
 
-  totalShow.innerText = total;
-  packedShow.innerText = packed;
-  remainingShow.innerText = Math.max(total - packed, 0);
+  animateNumber(totalShow, total);
+  animateNumber(packedShow, packed);
+  animateNumber(remainingShow, Math.max(total - packed, 0));
 
   chart.data.datasets[0].data = [
     Math.min(packed,total),
