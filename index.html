@@ -57,7 +57,9 @@ button{
   justify-content:center;
 }
 
-/* 🔥 MATCHED SIZE SYSTEM (IMPORTANT) */
+/* =========================
+   🔥 GLOWING STATUS RING
+========================= */
 #status{
   width:120px;
   height:120px;
@@ -66,24 +68,29 @@ button{
   align-items:center;
   justify-content:center;
   font-weight:bold;
+  transition:0.3s;
+  box-shadow:0 0 10px rgba(255,255,255,0.2);
 }
 
+/* CHART */
 #chartBox{
-  width:120px;
-  height:120px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  width:160px;
+  height:160px;
 }
 
-canvas{
-  width:120px !important;
-  height:120px !important;
+/* RECENT LIST */
+#recentAdds{
+  width:60px;
+  font-size:11px;
+  text-align:left;
 }
 
-#summary{
-  display:none;
-  margin-top:20px;
+.recentItem{margin:2px 0;}
+.fade{opacity:0.35;}
+
+#trackText{
+  margin-top:10px;
+  font-size:14px;
 }
 </style>
 </head>
@@ -94,13 +101,11 @@ canvas{
 
 <div class="card">
 
-<!-- START -->
 <div id="startScreen">
   <input id="totalInput" type="number" placeholder="Total units">
   <button onclick="start()">Start</button>
 </div>
 
-<!-- MAIN -->
 <div id="mainScreen" style="display:none;">
 
 <div>Total: <span id="totalShow">0</span></div>
@@ -112,29 +117,30 @@ canvas{
 
 <div class="frame">
 
-<!-- STATUS -->
+<!-- STATUS (GLOWING RING) -->
 <div class="panel">
   <div id="status">--</div>
   <div id="trackText">--</div>
 </div>
 
-<!-- PIE -->
+<!-- PIE + LEGEND + LIST -->
 <div class="panel">
-  <div id="chartBox">
-    <canvas id="chart"></canvas>
+
+  <div style="font-size:12px;margin-bottom:6px;">
+    🟢 Packed | 🔴 Remaining
   </div>
-</div>
+
+  <div class="chartRow">
+    <div id="chartBox">
+      <canvas id="chart"></canvas>
+    </div>
+
+    <div id="recentAdds"></div>
+  </div>
 
 </div>
 
-<button onclick="endShift()" style="margin-top:20px;background:#ff4d4d;color:white;">
-  End Production
-</button>
-
 </div>
-
-<!-- SUMMARY -->
-<div id="summary"></div>
 
 </div>
 
@@ -142,6 +148,7 @@ canvas{
 
 let total = 0;
 let packed = 0;
+let recentAdds = [];
 let chart;
 
 /* START */
@@ -164,8 +171,7 @@ function createChart(){
   if(chart) return;
 
   chart = new Chart(document.getElementById("chart"),{
-    type:"doughnut",
-
+    type:"pie",
     data:{
       labels:["Packed","Remaining"],
       datasets:[{
@@ -174,37 +180,21 @@ function createChart(){
         borderWidth:0
       }]
     },
-
     options:{
-      responsive:false,
-      maintainAspectRatio:false,
-      cutout:"0%",
-
       plugins:{
-        legend:{
-          display:true,
-          position:"bottom",
-          labels:{
-            color:"white",
-            font:{size:10},
-            boxWidth:10,
-            padding:6
-          }
-        },
-
+        legend:{display:false},
         datalabels:{
           color:"white",
           font:{size:11,weight:"bold"},
           formatter:(value,ctx)=>{
             const data = ctx.chart.data.datasets[0].data;
             const sum = data.reduce((a,b)=>a+b,0);
-            if(sum === 0) return "0%";
+            if(sum===0) return "0%";
             return ((value/sum)*100).toFixed(0)+"%";
           }
         }
       }
     },
-
     plugins:[ChartDataLabels]
   });
 }
@@ -215,9 +205,14 @@ function add(){
   if(isNaN(v)) return;
 
   packed += v;
+
+  recentAdds.unshift(v);
+  if(recentAdds.length > 6) recentAdds.pop();
+
   document.getElementById("addInput").value="";
 
   update();
+  updateRecent();
 }
 
 /* UPDATE */
@@ -232,42 +227,50 @@ function update(){
   ];
   chart.update();
 
+  /* TIME BASED TRACKING */
   const now = new Date();
   const start = new Date(); start.setHours(8,30,0,0);
   const end = new Date(); end.setHours(21,30,0,0);
 
-  let progress = (now-start)/(end-start);
-  progress = Math.max(0,Math.min(1,progress));
+  let timeProgress = (now-start)/(end-start);
+  timeProgress = Math.max(0,Math.min(1,timeProgress));
 
-  let expected = total * progress;
+  let expected = total * timeProgress;
 
-  let status = document.getElementById("status");
-  let track = document.getElementById("trackText");
+  const status = document.getElementById("status");
+  const track = document.getElementById("trackText");
 
-  status.style.background = packed/total >= progress ? "green" : "red";
-  status.innerText = packed/total >= progress ? "On Track" : "Behind";
+  let ratio = total ? packed/total : 0;
+
+  /* 🔥 GLOWING STATUS RING */
+  if(ratio >= timeProgress){
+    status.style.background="rgba(0,255,136,0.15)";
+    status.style.boxShadow="0 0 18px #00ff88";
+    status.style.border="2px solid #00ff88";
+    status.innerText="On Track";
+  } else {
+    status.style.background="rgba(255,0,0,0.15)";
+    status.style.boxShadow="0 0 18px red";
+    status.style.border="2px solid red";
+    status.innerText="Behind";
+  }
 
   track.innerText =
     packed >= expected
-    ? "On track"
+    ? "On track for shift pace"
     : "Need " + Math.ceil(expected-packed) + " units";
 }
 
-/* END SHIFT */
-function endShift(){
-  document.getElementById("mainScreen").style.display="none";
-  document.getElementById("summary").style.display="block";
+/* RECENT LIST */
+function updateRecent(){
+  let html = "";
 
-  const remaining = total - packed;
-  const percent = total ? ((packed/total)*100).toFixed(1) : 0;
+  recentAdds.forEach((v,i)=>{
+    let cls = i>=3 ? "fade" : "";
+    html += `<div class="recentItem ${cls}">+${v}</div>`;
+  });
 
-  document.getElementById("summary").innerHTML = `
-    <h2>Shift Complete</h2>
-    <p>Packed: ${packed}</p>
-    <p>Remaining: ${remaining}</p>
-    <p>Completion: ${percent}%</p>
-    <button onclick="location.reload()">Restart</button>
-  `;
+  document.getElementById("recentAdds").innerHTML = html;
 }
 
 </script>
