@@ -17,8 +17,11 @@ body{
   padding:30px;
 }
 
+h1{margin-bottom:20px}
+
+/* MAIN CARD */
 .card{
-  width:540px;
+  width:560px;
   margin:auto;
   background:rgba(255,255,255,0.12);
   border-radius:15px;
@@ -26,12 +29,13 @@ body{
   backdrop-filter:blur(10px);
 }
 
+/* INPUT */
 input{
   padding:10px;
   border:none;
   border-radius:6px;
   margin:10px;
-  width:170px;
+  width:180px;
 }
 
 button{
@@ -50,28 +54,42 @@ button:hover{opacity:0.85}
   color:white;
 }
 
+/* TOP VALUES */
 .inline{
   font-size:20px;
   margin:10px;
 }
 
-/* MAIN LAYOUT FIX */
-.dashboard{
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  gap:60px;
+/* OUTER FRAME (NEW WHITE PANEL) */
+.frame{
   margin-top:20px;
+  background:white;
+  border-radius:15px;
+  padding:20px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  color:black;
 }
 
-/* STATUS SIDE */
-#statusBlock{
+/* LEFT SIDE (BUTTON + STATUS) */
+.leftPanel{
+  width:50%;
   display:flex;
   flex-direction:column;
   align-items:center;
-  gap:10px;
+  gap:15px;
 }
 
+/* RIGHT SIDE (PIE) */
+.rightPanel{
+  width:50%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+/* STATUS */
 #statusCircle{
   width:120px;
   height:120px;
@@ -82,29 +100,30 @@ button:hover{opacity:0.85}
   font-weight:bold;
   font-size:14px;
   background:gray;
-  padding:10px;
+  color:white;
 }
 
-/* PIE CHART CENTER FIX */
+/* PIE SIZE FIX */
 #chartContainer{
-  width:220px;
-  display:flex;
-  justify-content:center;
-  align-items:center;
+  width:180px;
+  height:180px;
 }
 
-/* NEW REQUIRED UNITS TEXT */
+/* LEGEND ABOVE PIE */
+#legendNote{
+  font-size:12px;
+  margin-bottom:5px;
+  color:#333;
+}
+
+/* REQUIRED TEXT */
 #requiredText{
-  margin-top:15px;
-  font-size:14px;
+  font-size:13px;
+  text-align:center;
+  margin-top:10px;
 }
 
-/* CENTER LEGEND */
-.chart-legend{
-  display:flex;
-  justify-content:center;
-}
-
+/* SUMMARY */
 #summary{
   display:none;
   margin-top:20px;
@@ -137,22 +156,31 @@ button:hover{opacity:0.85}
     <button onclick="add()">Add</button>
   </div>
 
-  <div class="dashboard">
+  <!-- FRAMED DASHBOARD -->
+  <div class="frame">
 
-    <!-- STATUS -->
-    <div id="statusBlock">
-      <div id="statusCircle">--</div>
+    <!-- LEFT SIDE -->
+    <div class="leftPanel">
 
       <button class="danger" onclick="endProduction()">
         End Production
       </button>
 
+      <div id="statusCircle">--</div>
+
       <div id="requiredText">--</div>
+
     </div>
 
-    <!-- PIE -->
-    <div id="chartContainer">
-      <canvas id="chart"></canvas>
+    <!-- RIGHT SIDE -->
+    <div class="rightPanel">
+
+      <div id="legendNote">🟢 Packed | 🔴 Remaining</div>
+
+      <div id="chartContainer">
+        <canvas id="chart"></canvas>
+      </div>
+
     </div>
 
   </div>
@@ -203,18 +231,12 @@ function start(){
       labels:["Packed","Remaining"],
       datasets:[{
         data:[0,total],
-        backgroundColor:["#00ff88","#ff4d4d"]
+        backgroundColor:["#00c853","#ff5252"]
       }]
     },
     options:{
       plugins:{
-        legend:{
-          position:"bottom",
-          labels:{
-            color:"white",
-            align:"center"
-          }
-        },
+        legend:{display:false},
         datalabels:{
           color:"white",
           formatter:(v,c)=>{
@@ -250,7 +272,7 @@ function updateAll(){
   chart.data.datasets[0].data = [done,left];
   chart.update();
 
-  // STATUS LOGIC
+  // STATUS
   let prog = packed / total;
   let time = timeProgress();
 
@@ -278,8 +300,8 @@ function updateRequired(){
   const el = document.getElementById("requiredText");
 
   if(diff <= 0){
-    el.innerText = "You are on track (0 units needed)";
-    el.style.color = "#00ff88";
+    el.innerText = "On track (0 units needed)";
+    el.style.color = "green";
   } else {
     el.innerText = "Need " + Math.ceil(diff) + " units to be on track";
     el.style.color = "orange";
@@ -301,7 +323,7 @@ function endProduction(){
   document.getElementById("summary").style.display = "block";
 
   document.getElementById("summary").innerHTML = `
-    <h2>Final Production Report</h2>
+    <h2>Final Report</h2>
     <p><b>Packed:</b> ${packed}</p>
     <p><b>Pushed:</b> ${pushed}</p>
     <p><b>Completed:</b> ${percent}%</p>
