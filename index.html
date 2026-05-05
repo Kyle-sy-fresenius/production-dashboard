@@ -34,11 +34,7 @@ input,button{
   margin:10px;
 }
 
-button{
-  background:white;
-  font-weight:bold;
-  cursor:pointer;
-}
+button{background:white;font-weight:bold;cursor:pointer}
 
 .frame{
   display:flex;
@@ -65,10 +61,7 @@ button{
   font-weight:bold;
 }
 
-#chartBox{
-  width:160px;
-  height:160px;
-}
+#chartBox{width:160px;height:160px}
 
 .chartRow{
   display:flex;
@@ -85,6 +78,8 @@ button{
 
 .recentItem{margin:2px 0;}
 .fade{opacity:0.35;}
+
+#trackText{margin-top:10px;font-size:14px}
 </style>
 </head>
 
@@ -130,19 +125,35 @@ button{
 </div>
 
 <script>
-const supabase = window.supabase.createClient(
+const { createClient } = supabase;
+
+const sb = createClient(
   "https://afakpgezcpvvnvoqcthj.supabase.co",
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFmYWtwZ2V6Y3B2dm52b3FjdGhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTY4ODYsImV4cCI6MjA5MzU3Mjg4Nn0.4sJ4VvVG09F0F5wsVlB3Z37v3oo9m0841NcaRr8bo4k"
 );
 
-let total=0;
-let packed=0;
+/* ELEMENTS */
+const startScreen = document.getElementById("startScreen");
+const mainScreen = document.getElementById("mainScreen");
+const totalInput = document.getElementById("totalInput");
+const addInput = document.getElementById("addInput");
+
+const totalShow = document.getElementById("totalShow");
+const packedShow = document.getElementById("packedShow");
+const remainingShow = document.getElementById("remainingShow");
+const recentAddsEl = document.getElementById("recentAdds");
+const statusBox = document.getElementById("status");
+const trackText = document.getElementById("trackText");
+
+/* STATE */
+let total = 0;
+let packed = 0;
+let recentAdds = [];
 let chart;
-let recentAdds=[];
 
 /* LOAD */
 async function loadData(){
-  const { data } = await supabase
+  const { data } = await sb
     .from("production_dashboard")
     .select("*")
     .eq("id",1)
@@ -150,13 +161,13 @@ async function loadData(){
 
   if(!data) return;
 
-  total=data.total||0;
-  packed=data.packed||0;
-  recentAdds=data.recent_adds||[];
+  total = data.total || 0;
+  packed = data.packed || 0;
+  recentAdds = data.recent_adds || [];
 
-  updateRecentAdds();
+  updateRecent();
 
-  if(total>0){
+  if(total > 0){
     startScreen.style.display="none";
     mainScreen.style.display="block";
     createChart();
@@ -166,23 +177,20 @@ async function loadData(){
 
 /* SAVE */
 async function saveData(){
-  await supabase
-    .from("production_dashboard")
-    .upsert({
-      id:1,
-      total,
-      packed,
-      recent_adds:recentAdds,
-      updated_at:new Date().toISOString()
-    });
+  await sb.from("production_dashboard").upsert({
+    id:1,
+    total,
+    packed,
+    recent_adds: recentAdds
+  });
 }
 
 /* START */
 function start(){
-  total=parseFloat(totalInput.value);
+  total = parseFloat(totalInput.value);
   if(!total) return;
 
-  packed=0;
+  packed = 0;
 
   startScreen.style.display="none";
   mainScreen.style.display="block";
@@ -194,7 +202,9 @@ function start(){
 
 /* CHART */
 function createChart(){
-  chart=new Chart(document.getElementById("chart"),{
+  if(chart) return;
+
+  chart = new Chart(document.getElementById("chart"),{
     type:"pie",
     data:{
       labels:["Packed","Remaining"],
@@ -202,63 +212,118 @@ function createChart(){
         data:[0,total],
         backgroundColor:["#00ff88","#ff5252"]
       }]
-    }
+    },
+    options:{
+      plugins:{
+        legend:{display:false},
+        datalabels:{
+          color:"white",
+          formatter:(value,ctx)=>{
+            let data = ctx.chart.data.datasets[0].data;
+            let sum = data[0]+data[1];
+            if(sum===0) return "0%";
+            return ((value/sum)*100).toFixed(0)+"%";
+          }
+        }
+      }
+    },
+    plugins:[ChartDataLabels]
   });
 }
 
 /* ADD */
 function add(){
-  let v=parseFloat(addInput.value);
+  let v = parseFloat(addInput.value);
   if(!v) return;
 
-  packed+=v;
+  packed += v;
 
   recentAdds.unshift(v);
-  if(recentAdds.length>6) recentAdds.pop();
+  if(recentAdds.length > 6) recentAdds.pop();
 
-  updateRecentAdds();
+  addInput.value = "";
 
-  addInput.value="";
   update();
+  updateRecent();
   saveData();
 }
 
 /* UPDATE */
 function update(){
-  totalShow.innerText=total;
-  packedShow.innerText=packed;
-  remainingShow.innerText=Math.max(total-packed,0);
+  if(!chart || total === 0) return;
 
-  chart.data.datasets[0].data=[packed,total-packed];
+  totalShow.innerText = total;
+  packedShow.innerText = packed;
+  remainingShow.innerText = Math.max(total - packed, 0);
+
+  chart.data.datasets[0].data = [
+    Math.min(packed,total),
+    Math.max(total-packed,0)
+  ];
   chart.update();
+
+  const now = new Date();
+  const start = new Date(); start.setHours(8,30,0,0);
+  const end = new Date(); end.setHours(21,30,0,0);
+
+  let timeProgress = (now - start) / (end - start);
+  timeProgress = Math.max(0, Math.min(1, timeProgress));
+
+  let expected = total * timeProgress;
+  let diff = expected - packed;
+
+  let progress = total > 0 ? packed / total : 0;
+
+  if(progress >= timeProgress + 0.02){
+    statusBox.style.background="green";
+    statusBox.innerText="On Track";
+  }
+  else if(progress >= timeProgress - 0.1){
+    statusBox.style.background="orange";
+    statusBox.innerText="Slightly Behind";
+  }
+  else{
+    statusBox.style.background="red";
+    statusBox.innerText="Behind";
+  }
+
+  trackText.innerText =
+    diff <= 0
+    ? "On track for shift pace"
+    : "Need " + Math.ceil(diff) + " units to be on track";
 }
 
 /* RECENT */
-function updateRecentAdds(){
-  let html="";
+function updateRecent(){
+  let html = "";
+
   recentAdds.forEach((v,i)=>{
-    let cls=i>=3?"fade":"";
-    html+=`<div class="recentItem ${cls}">+${v}</div>`;
+    let cls = i >= 3 ? "fade" : "";
+    html += `<div class="recentItem ${cls}">+${v}</div>`;
   });
-  recentAddsEl=document.getElementById("recentAdds");
-  if(recentAddsEl) recentAddsEl.innerHTML=html;
+
+  recentAddsEl.innerHTML = html;
 }
 
 /* REALTIME */
-supabase
-.channel("live")
+sb.channel("live")
 .on("postgres_changes",
-{event:"*",schema:"public",table:"production_dashboard"},
-payload=>{
-  total=payload.new.total;
-  packed=payload.new.packed;
-  recentAdds=payload.new.recent_adds||[];
+  { event:"*", schema:"public", table:"production_dashboard" },
+  payload => {
 
-  update();
-  updateRecentAdds();
-})
+    if(!payload.new) return;
+
+    total = payload.new.total || 0;
+    packed = payload.new.packed || 0;
+    recentAdds = payload.new.recent_adds || [];
+
+    update();
+    updateRecent();
+  }
+)
 .subscribe();
 
+/* INIT */
 loadData();
 </script>
 
