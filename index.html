@@ -9,20 +9,109 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
-body{margin:0;font-family:Arial;background:linear-gradient(to right,#4facfe,#00c6ff);color:white;text-align:center;padding:30px}
-.card{width:560px;margin:auto;padding:20px;border-radius:15px;background:rgba(255,255,255,0.12);backdrop-filter:blur(10px)}
-input,button{padding:10px;border:none;border-radius:6px;margin:10px}
-button{background:white;font-weight:bold;cursor:pointer}
-button:hover{opacity:0.85}
-.inline{font-size:20px;margin:10px}
-.frame{display:flex;justify-content:space-between;gap:20px;margin-top:20px}
-.panel{width:50%;border:2px solid white;border-radius:12px;padding:15px}
-#status{width:120px;height:120px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:auto;font-weight:bold}
-#chartBox{width:180px;height:180px;margin:auto}
-#legend{font-size:12px;margin-bottom:10px}
-#trackText{margin-top:10px;font-size:14px}
-.bottom{margin-top:25px;display:flex;justify-content:center}
-#summary{display:none;margin-top:20px}
+body{
+  margin:0;
+  font-family:Arial;
+  background:linear-gradient(to right,#4facfe,#00c6ff);
+  color:white;
+  text-align:center;
+  padding:30px;
+}
+
+.card{
+  width:560px;
+  margin:auto;
+  padding:20px;
+  border-radius:15px;
+  background:rgba(255,255,255,0.12);
+  backdrop-filter:blur(10px);
+}
+
+input,button{
+  padding:10px;
+  border:none;
+  border-radius:6px;
+  margin:10px;
+}
+
+button{
+  background:white;
+  font-weight:bold;
+  cursor:pointer;
+}
+
+.inline{
+  font-size:20px;
+  margin:10px;
+}
+
+.frame{
+  display:flex;
+  justify-content:space-between;
+  gap:20px;
+  margin-top:20px;
+}
+
+.panel{
+  width:50%;
+  border:2px solid white;
+  border-radius:12px;
+  padding:15px;
+}
+
+#status{
+  width:120px;
+  height:120px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin:auto;
+  font-weight:bold;
+}
+
+#chartBox{
+  width:160px;
+  height:160px;
+}
+
+.chartRow{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+}
+
+#recentAdds{
+  width:55px;
+  font-size:11px;
+  text-align:left;
+}
+
+.recentItem{
+  margin:3px 0;
+  font-weight:bold;
+}
+
+.fade{
+  opacity:0.35;
+}
+
+#trackText{
+  margin-top:10px;
+  font-size:14px;
+}
+
+.bottom{
+  margin-top:25px;
+  display:flex;
+  justify-content:center;
+}
+
+#summary{
+  display:none;
+  margin-top:20px;
+}
 </style>
 </head>
 
@@ -39,6 +128,7 @@ button:hover{opacity:0.85}
 </div>
 
 <div id="mainScreen" style="display:none;">
+
   <div class="inline">Total: <span id="totalShow">0</span></div>
   <div class="inline">Packed: <span id="packedShow">0</span></div>
   <div class="inline">Remaining: <span id="remainingShow">0</span></div>
@@ -49,212 +139,20 @@ button:hover{opacity:0.85}
   </div>
 
   <div class="frame">
+
     <div class="panel">
       <div id="status">--</div>
       <div id="trackText">--</div>
     </div>
 
     <div class="panel">
-      <div id="legend">🟢 Packed | 🔴 Remaining</div>
-      <div id="chartBox">
-        <canvas id="chart"></canvas>
+      <div style="font-size:12px;margin-bottom:8px;">🟢 Packed | 🔴 Remaining</div>
+
+      <div class="chartRow">
+        <div id="chartBox">
+          <canvas id="chart"></canvas>
+        </div>
+
+        <div id="recentAdds"></div>
       </div>
-    </div>
-  </div>
-
-  <div class="bottom">
-    <button style="background:#ff4d4d;color:white" onclick="endShift()">End Shift</button>
-  </div>
-</div>
-
-<div id="summary"></div>
-
-</div>
-
-<script>
-const SUPABASE_URL = "https://afakpgezcpvvnvoqcthj.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFmYWtwZ2V6Y3B2dm52b3FjdGhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTY4ODYsImV4cCI6MjA5MzU3Mjg4Nn0.4sJ4VvVG09F0F5wsVlB3Z37v3oo9m0841NcaRr8bo4k";
-
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-let total = 0;
-let packed = 0;
-let chart;
-
-async function loadData(){
-  const { data } = await supabaseClient
-    .from("production_dashboard")
-    .select("*")
-    .eq("id", 1)
-    .single();
-
-  if(!data) return;
-
-  total = data.total || 0;
-  packed = data.packed || 0;
-
-  if(total > 0){
-    document.getElementById("startScreen").style.display="none";
-    document.getElementById("mainScreen").style.display="block";
-    createChart();
-    update();
-  }
-}
-
-async function saveData(){
-  await supabaseClient
-    .from("production_dashboard")
-    .update({
-      total: total,
-      packed: packed,
-      updated_at: new Date().toISOString()
-    })
-    .eq("id", 1);
-}
-
-async function start(){
-  total = parseFloat(document.getElementById("totalInput").value);
-  packed = 0;
-  if(!total) return;
-
-  document.getElementById("startScreen").style.display="none";
-  document.getElementById("mainScreen").style.display="block";
-
-  createChart();
-  update();
-  await saveData();
-}
-
-function createChart(){
-  if(chart) return;
-
-  chart = new Chart(document.getElementById("chart"),{
-    type:"pie",
-    data:{
-      labels:["Packed","Remaining"],
-      datasets:[{
-        data:[0,total],
-        backgroundColor:["#00ff88","#ff5252"]
-      }]
-    },
-    options:{
-      plugins:{
-        legend:{display:false},
-        datalabels:{
-          color:"white",
-          formatter:(value,ctx)=>{
-            let data = ctx.chart.data.datasets[0].data;
-            let sum = data[0] + data[1];
-            if(sum===0) return "0%";
-            return ((value/sum)*100).toFixed(0)+"%";
-          }
-        }
-      }
-    },
-    plugins:[ChartDataLabels]
-  });
-}
-
-async function add(){
-  let v = parseFloat(document.getElementById("addInput").value);
-  if(!v) return;
-
-  packed += v;
-  document.getElementById("addInput").value="";
-
-  update();
-  await saveData();
-}
-
-function update(){
-  if(!chart) return;
-
-  document.getElementById("totalShow").innerText = total;
-  document.getElementById("packedShow").innerText = packed;
-  document.getElementById("remainingShow").innerText = Math.max(total - packed, 0);
-
-  let done = Math.min(packed,total);
-  let left = Math.max(total-packed,0);
-
-  chart.data.datasets[0].data = [done,left];
-  chart.update();
-
-  const now = new Date();
-  const start = new Date(); start.setHours(8,30,0,0);
-  const end = new Date(); end.setHours(21,30,0,0);
-
-  let timeProgress = (now - start) / (end - start);
-  timeProgress = Math.max(0,Math.min(1,timeProgress));
-
-  let expected = total * timeProgress;
-  let diff = expected - packed;
-
-  let progress = packed / total;
-  let box = document.getElementById("status");
-
-  if(progress >= timeProgress){
-    box.style.background="green";
-    box.innerText="On Track";
-  }
-  else if(progress >= timeProgress - 0.1){
-    box.style.background="orange";
-    box.innerText="Slightly Behind";
-  }
-  else{
-    box.style.background="red";
-    box.innerText="Behind";
-  }
-
-  document.getElementById("trackText").innerText =
-    diff <= 0
-    ? "On track for shift pace"
-    : "Need " + Math.ceil(diff) + " units to be on track";
-}
-
-/* REALTIME */
-supabaseClient
-  .channel("live")
-  .on("postgres_changes",
-    { event: "*", schema: "public", table: "production_dashboard" },
-    payload => {
-      total = payload.new.total;
-      packed = payload.new.packed;
-
-      if(total > 0){
-        document.getElementById("startScreen").style.display="none";
-        document.getElementById("mainScreen").style.display="block";
-        createChart();
-        update();
-      }
-    }
-  )
-  .subscribe();
-
-function endShift(){
-  let pushed = total - packed;
-  let percent = ((packed/total)*100).toFixed(1);
-
-  document.getElementById("mainScreen").style.display="none";
-  document.getElementById("summary").style.display="block";
-
-  document.getElementById("summary").innerHTML=`
-    <h2>Shift Complete</h2>
-    <p>Packed: ${packed}</p>
-    <p>Remaining: ${pushed}</p>
-    <p>Completion: ${percent}%</p>
-    <button onclick="restart()">Restart</button>
-  `;
-}
-
-async function restart(){
-  total = 0;
-  packed = 0;
-  await saveData();
-  location.reload();
-}
-
-loadData();
-</script>
-
-</body>
-</html>
+    </div
