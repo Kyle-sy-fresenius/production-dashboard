@@ -235,22 +235,29 @@ function updateAll(){
 }
 
 function updatePace(){
-  if(packed<=0)return;
+  if(packed <= 0) return;
 
-  const start=new Date();
-  start.setHours(8,30,0,0);
+  const now = new Date();
 
-  const hours=(new Date()-start)/3600000;
-  if(hours<=0)return;
+  // Only consider last active period (last 1 hour smoothing)
+  const lookback = 1; // hours
 
-  const rate=packed/hours;
-  if(rate<=0)return;
+  const start = new Date(now.getTime() - lookback * 3600000);
 
-  const finish=new Date(start.getTime()+(total/rate)*3600000);
+  const hours = lookback; // fixed window
 
-  document.getElementById("paceText").innerText=
+  const rate = packed / ((now - new Date(now.getTime() - lookback * 3600000)) / 3600000);
+
+  if(rate <= 0) return;
+
+  const remaining = total - packed;
+  const hoursNeeded = remaining / rate;
+
+  const finish = new Date(now.getTime() + hoursNeeded * 3600000);
+
+  document.getElementById("paceText").innerText =
     "At this pace you will complete everything at " +
-    String(finish.getHours()).padStart(2,"0")+":"+
+    String(finish.getHours()).padStart(2,"0") + ":" +
     String(finish.getMinutes()).padStart(2,"0");
 }
 
