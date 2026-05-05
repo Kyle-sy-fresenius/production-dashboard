@@ -55,27 +55,17 @@ button:hover{opacity:0.85}
   margin:10px;
 }
 
-<div class="dashboard">
+.dashboard{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  gap:40px;
+  margin-top:20px;
+}
 
-  <div>
-    <div id="statusCircle">--</div>
-
-    <button class="danger" onclick="endProduction()">
-      End Production
-    </button>
-  </div>
-
-  <div id="chartContainer">
-    <canvas id="chart"></canvas>
-  </div>
-
-</div>
-
-<div id="predictionText" style="margin-top:15px; font-size:14px;">
-  --
-</div>
-
-#chartContainer{width:200px;}
+#chartContainer{
+  width:200px;
+}
 
 #statusCircle{
   width:120px;
@@ -90,9 +80,9 @@ button:hover{opacity:0.85}
   padding:10px;
 }
 
-#paceText{
-  margin-top:10px;
-  font-size:13px;
+#predictionText{
+  margin-top:15px;
+  font-size:14px;
 }
 
 #summary{
@@ -109,14 +99,14 @@ button:hover{opacity:0.85}
 
 <div class="card">
 
-<!-- START -->
+<!-- START SCREEN -->
 <div id="startScreen">
   <p>Enter total units for today's production:</p>
   <input type="number" id="totalInput">
   <button onclick="start()">Start</button>
 </div>
 
-<!-- MAIN -->
+<!-- MAIN SCREEN -->
 <div id="mainScreen" style="display:none;">
 
   <div class="inline">Total: <span id="totalShow">0</span></div>
@@ -127,13 +117,14 @@ button:hover{opacity:0.85}
     <button onclick="add()">Add</button>
   </div>
 
-  <button class="danger" onclick="endProduction()">End Production</button>
-
   <div class="dashboard">
 
     <div>
       <div id="statusCircle">--</div>
-      
+
+      <button class="danger" onclick="endProduction()">
+        End Production
+      </button>
     </div>
 
     <div id="chartContainer">
@@ -141,6 +132,9 @@ button:hover{opacity:0.85}
     </div>
 
   </div>
+
+  <div id="predictionText">--</div>
+
 </div>
 
 <!-- SUMMARY -->
@@ -150,37 +144,38 @@ button:hover{opacity:0.85}
 
 <script>
 
-let total=0;
-let packed=0;
+let total = 0;
+let packed = 0;
 let chart;
 
-const startShift=8.5;
-const endShift=21.5;
+const startShift = 8.5;
+const endShift = 21.5;
 
-const passwords=["Kyle","Sofiya","Elamari","Osama"];
+const passwords = ["Kyle","Sofiya","Elamari","Osama"];
 
 function nowDecimal(){
-  const d=new Date();
-  return d.getHours()+d.getMinutes()/60;
+  const d = new Date();
+  return d.getHours() + d.getMinutes()/60;
 }
 
 function timeProgress(){
-  const n=nowDecimal();
-  if(n<=startShift)return 0;
-  if(n>=endShift)return 1;
-  return (n-startShift)/(endShift-startShift);
+  const n = nowDecimal();
+  if(n <= startShift) return 0;
+  if(n >= endShift) return 1;
+  return (n - startShift) / (endShift - startShift);
 }
 
 function start(){
-  total=parseFloat(document.getElementById("totalInput").value);
-  if(!total)return;
 
-  document.getElementById("startScreen").style.display="none";
-  document.getElementById("mainScreen").style.display="block";
+  total = parseFloat(document.getElementById("totalInput").value);
+  if(!total) return;
 
-  document.getElementById("totalShow").innerText=total;
+  document.getElementById("startScreen").style.display = "none";
+  document.getElementById("mainScreen").style.display = "block";
 
-  chart=new Chart(document.getElementById("chart"),{
+  document.getElementById("totalShow").innerText = total;
+
+  chart = new Chart(document.getElementById("chart"),{
     type:"pie",
     data:{
       labels:["Packed","Remaining"],
@@ -195,9 +190,9 @@ function start(){
         datalabels:{
           color:"white",
           formatter:(v,c)=>{
-            const d=c.chart.data.datasets[0].data;
-            const t=d[0]+d[1];
-            return ((v/t)*100).toFixed(0)+"%";
+            const d = c.chart.data.datasets[0].data;
+            const t = d[0] + d[1];
+            return ((v/t)*100).toFixed(0) + "%";
           }
         }
       }
@@ -209,44 +204,45 @@ function start(){
 }
 
 function add(){
-  let v=parseFloat(document.getElementById("addInput").value);
-  if(!v)return;
+  let v = parseFloat(document.getElementById("addInput").value);
+  if(!v) return;
 
-  packed+=v;
-  document.getElementById("packedShow").innerText=packed;
-  document.getElementById("addInput").value="";
+  packed += v;
+  document.getElementById("packedShow").innerText = packed;
+  document.getElementById("addInput").value = "";
 
   updateAll();
 }
 
 function updateAll(){
-  let done=Math.min(packed,total);
-  let left=Math.max(total-packed,0);
 
-  chart.data.datasets[0].data=[done,left];
+  let done = Math.min(packed,total);
+  let left = Math.max(total-packed,0);
+
+  chart.data.datasets[0].data = [done,left];
   chart.update();
 
   // STATUS
-  let prog=packed/total;
-  let time=timeProgress();
+  let prog = packed / total;
+  let time = timeProgress();
 
-  const box=document.getElementById("statusCircle");
+  const box = document.getElementById("statusCircle");
 
-  if(prog>=time){
-    box.style.background="green";
-    box.innerText="On Track";
-  }else if(prog>=time-0.1){
-    box.style.background="orange";
-    box.innerText="Slightly Behind";
-  }else{
-    box.style.background="red";
-    box.innerText="Behind";
+  if(prog >= time){
+    box.style.background = "green";
+    box.innerText = "On Track";
+  } else if(prog >= time - 0.1){
+    box.style.background = "orange";
+    box.innerText = "Slightly Behind";
+  } else {
+    box.style.background = "red";
+    box.innerText = "Behind";
   }
 
- updatePrediction();
+  updatePrediction();
 }
 
-  function updatePrediction(){
+function updatePrediction(){
 
   if(total === 0 || packed === 0){
     document.getElementById("predictionText").innerText = "--";
@@ -255,52 +251,41 @@ function updateAll(){
 
   const now = new Date();
 
-  // Look at last 1 hour
-  const oneHourAgo = new Date(now.getTime() - 3600000);
+  const start = new Date();
+  start.setHours(8,30,0,0);
 
-  // Approx rate based on last hour
-  // (fallback: if shift just started, use overall)
-  const elapsedHours = Math.max(
-    (now - new Date(now.setHours(8,30,0,0))) / 3600000,
-    0.01
-  );
+  const hours = Math.max((now - start) / 3600000, 0.01);
 
-  let rate = packed / elapsedHours;
-
-  if(rate <= 0){
-    document.getElementById("predictionText").innerText = "--";
-    return;
-  }
+  const rate = packed / hours;
+  if(rate <= 0) return;
 
   const remaining = total - packed;
   const hoursNeeded = remaining / rate;
 
   const finish = new Date(now.getTime() + hoursNeeded * 3600000);
 
-  const hh = String(finish.getHours()).padStart(2,'0');
-  const mm = String(finish.getMinutes()).padStart(2,'0');
+  const hh = String(finish.getHours()).padStart(2,"0");
+  const mm = String(finish.getMinutes()).padStart(2,"0");
 
   document.getElementById("predictionText").innerText =
     "Expected completion time: " + hh + ":" + mm;
 }
 
-
-
 function endProduction(){
 
-  let pass=prompt("Enter password:");
+  let pass = prompt("Enter password:");
   if(!passwords.includes(pass)){
     alert("Access denied");
     return;
   }
 
-  const pushed=total-packed;
-  const percent=((packed/total)*100).toFixed(1);
+  const pushed = total - packed;
+  const percent = ((packed/total)*100).toFixed(1);
 
-  document.getElementById("mainScreen").style.display="none";
-  document.getElementById("summary").style.display="block";
+  document.getElementById("mainScreen").style.display = "none";
+  document.getElementById("summary").style.display = "block";
 
-  document.getElementById("summary").innerHTML=`
+  document.getElementById("summary").innerHTML = `
     <h2>Final Production Report</h2>
     <p><b>Packed:</b> ${packed}</p>
     <p><b>Pushed:</b> ${pushed}</p>
@@ -308,7 +293,7 @@ function endProduction(){
   `;
 }
 
-setInterval(updateAll,60000);
+setInterval(updateAll, 60000);
 
 </script>
 
