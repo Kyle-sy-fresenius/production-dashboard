@@ -7,6 +7,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
 body{
   margin:0;
@@ -17,241 +19,187 @@ body{
   padding:30px;
 }
 
-h1{margin-bottom:20px}
-
 .card{
   width:560px;
   margin:auto;
-  background:rgba(255,255,255,0.12);
-  border-radius:15px;
   padding:20px;
+  border-radius:15px;
+  background:rgba(255,255,255,0.12);
   backdrop-filter:blur(10px);
 }
 
-input{
+input,button{
   padding:10px;
-  border:none;
   border-radius:6px;
+  border:none;
   margin:10px;
-  width:180px;
 }
 
 button{
-  padding:10px 16px;
-  border:none;
-  border-radius:6px;
-  cursor:pointer;
   background:white;
   font-weight:bold;
+  cursor:pointer;
 }
 
-button:hover{opacity:0.85}
-
-.danger{
-  background:#ff4d4d;
-  color:white;
-}
-
-.inline{
-  font-size:20px;
-  margin:10px;
-}
-
-/* FRAME (OUTLINE ONLY) */
 .frame{
-  margin-top:20px;
   display:flex;
   justify-content:space-between;
-  align-items:stretch;
-  gap:20px;
-}
-
-/* LEFT */
-.leftPanel{
-  width:50%;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
+  margin-top:20px;
   gap:15px;
+}
 
+.panel{
+  width:48%;
   border:2px solid white;
   border-radius:12px;
   padding:15px;
 }
 
-/* RIGHT */
-.rightPanel{
-  width:50%;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-
-  border:2px solid white;
-  border-radius:12px;
-  padding:15px;
-}
-
-/* STATUS */
-#statusCircle{
-  width:120px;
-  height:120px;
+#status{
+  width:110px;
+  height:110px;
   border-radius:50%;
   display:flex;
   align-items:center;
   justify-content:center;
+  margin:auto;
   font-weight:bold;
-  font-size:14px;
-  background:gray;
-  color:white;
 }
 
-/* PIE */
-#chartContainer{
+#chartBox{
   width:180px;
   height:180px;
-}
-
-/* LEGEND */
-#legendNote{
-  font-size:12px;
-  margin-bottom:10px;
-  color:white;
-}
-
-/* REQUIRED */
-#requiredText{
-  font-size:13px;
-  margin-top:10px;
-}
-
-/* OUTSIDE BUTTON WRAPPER */
-.bottomArea{
-  margin-top:25px;
-  display:flex;
-  justify-content:center;
-}
-
-/* SUMMARY */
-#summary{
-  display:none;
-  margin-top:20px;
-  font-size:18px;
+  margin:auto;
 }
 </style>
 </head>
 
 <body>
 
-<h1>Production Dashboard</h1>
+<h1>Live Production Dashboard</h1>
 
 <div class="card">
 
 <!-- START -->
 <div id="startScreen">
-  <p>Enter total units for today's production:</p>
-  <input type="number" id="totalInput">
+  <input id="totalInput" type="number" placeholder="Enter total units">
   <button onclick="start()">Start</button>
 </div>
 
 <!-- MAIN -->
 <div id="mainScreen" style="display:none;">
 
-  <div class="inline">Total: <span id="totalShow">0</span></div>
-  <div class="inline">Packed: <span id="packedShow">0</span></div>
+  <h3>Total: <span id="totalShow">0</span> |
+      Packed: <span id="packedShow">0</span></h3>
 
-  <div>
-    <input id="addInput" type="number" placeholder="Add units">
-    <button onclick="add()">Add</button>
-  </div>
+  <input id="addInput" type="number" placeholder="Add units">
+  <button onclick="add()">Add</button>
 
-  <!-- FRAME -->
   <div class="frame">
 
-    <div class="leftPanel">
-      <div id="statusCircle">--</div>
-      <div id="requiredText">--</div>
+    <div class="panel">
+      <div id="status">--</div>
     </div>
 
-    <div class="rightPanel">
-      <div id="legendNote">🟢 Packed | 🔴 Remaining</div>
-      <div id="chartContainer">
+    <div class="panel">
+      <div id="chartBox">
         <canvas id="chart"></canvas>
       </div>
     </div>
 
   </div>
 
-  <!-- OUTSIDE END SHIFT BUTTON -->
-  <div class="bottomArea">
-    <button class="danger" onclick="endProduction()">
-      End Shift
-    </button>
-  </div>
-
 </div>
-
-<div id="summary"></div>
 
 </div>
 
 <script>
 
-/* AUTH */
-let unlocked=false;
+/* ================= SUPABASE ================= */
 
-const passwords=[
-  "Kyle","Sofiya","Anjali","Krithika","Niroshan",
-  "Lokesh","Elamari","Osama","Netra","Thishanthan"
-];
+const supabaseUrl = "https://afakpgezcpvvnvoqcthj.supabase.co";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFmYWtwZ2V6Y3B2dm52b3FjdGhqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5OTY4ODYsImV4cCI6MjA5MzU3Mjg4Nn0.4sJ4VvVG09F0F5wsVlB3Z37v3oo9m0841NcaRr8bo4k";
 
-function requestAccess(){
-  let pass=prompt("Enter password:");
-  if(passwords.includes(pass)){
-    unlocked=true;
-    sessionStorage.setItem("auth","true");
-  } else {
-    document.body.innerHTML="<h2 style='color:white;text-align:center;margin-top:100px;'>Locked</h2>";
+const sb = supabase.createClient(supabaseUrl, supabaseKey);
+
+/* ================= STATE ================= */
+
+let total = 0;
+let packed = 0;
+let chart;
+
+/* LOAD DATA */
+async function load(){
+
+  let { data } = await sb
+    .from("production")
+    .select("*")
+    .eq("id",1)
+    .single();
+
+  if(data){
+    total = data.total;
+    packed = data.packed;
+
+    document.getElementById("totalShow").innerText = total;
+    document.getElementById("packedShow").innerText = packed;
+
+    updateChart();
+    updateStatus();
   }
 }
 
-window.onload=function(){
-  if(sessionStorage.getItem("auth")==="true"){
-    unlocked=true;
-  } else requestAccess();
-};
+/* START SHIFT */
+async function start(){
 
-/* CORE */
-let total=0;
-let packed=0;
-let chart;
+  total = parseFloat(document.getElementById("totalInput").value);
+  if(!total) return;
 
-const startShift=8.5;
-const endShift=21.5;
-
-function nowDecimal(){
-  const d=new Date();
-  return d.getHours()+d.getMinutes()/60;
-}
-
-function timeProgress(){
-  const n=nowDecimal();
-  if(n<=startShift)return 0;
-  if(n>=endShift)return 1;
-  return (n-startShift)/(endShift-startShift);
-}
-
-/* START */
-function start(){
-
-  total=parseFloat(document.getElementById("totalInput").value);
-  if(!total)return;
+  await sb.from("production").upsert({
+    id:1,
+    total:total,
+    packed:0
+  });
 
   document.getElementById("startScreen").style.display="none";
   document.getElementById("mainScreen").style.display="block";
 
-  document.getElementById("totalShow").innerText=total;
+  initChart();
+  subscribe();
+  load();
+}
 
-  chart=new Chart(document.getElementById("chart"),{
+/* ADD UNITS */
+async function add(){
+
+  let v = parseFloat(document.getElementById("addInput").value);
+  if(!v) return;
+
+  packed += v;
+
+  await sb
+    .from("production")
+    .update({ packed: packed })
+    .eq("id",1);
+
+  document.getElementById("addInput").value="";
+}
+
+/* REALTIME */
+function subscribe(){
+
+  sb.channel("production")
+    .on("postgres_changes",
+      { event:"*", schema:"public", table:"production" },
+      () => load()
+    )
+    .subscribe();
+}
+
+/* CHART */
+function initChart(){
+
+  chart = new Chart(document.getElementById("chart"),{
     type:"pie",
     data:{
       labels:["Packed","Remaining"],
@@ -261,108 +209,45 @@ function start(){
       }]
     },
     options:{
-      plugins:{
-        legend:{display:false},
-        datalabels:{
-          color:"white",
-          formatter:(v,c)=>{
-            const d=c.chart.data.datasets[0].data;
-            const t=d[0]+d[1];
-            return ((v/t)*100).toFixed(0)+"%";
-          }
-        }
-      }
-    },
-    plugins:[ChartDataLabels]
+      plugins:{legend:{display:false}}
+    }
   });
-
-  updateAll();
 }
 
-/* ADD */
-function add(){
+function updateChart(){
 
-  let v=parseFloat(document.getElementById("addInput").value);
-  if(!v)return;
+  if(!chart) return;
 
-  packed+=v;
-  document.getElementById("packedShow").innerText=packed;
-  document.getElementById("addInput").value="";
+  chart.data.datasets[0].data = [
+    packed,
+    Math.max(total-packed,0)
+  ];
 
-  updateAll();
-}
-
-/* UPDATE */
-function updateAll(){
-
-  let done=Math.min(packed,total);
-  let left=Math.max(total-packed,0);
-
-  chart.data.datasets[0].data=[done,left];
   chart.update();
+}
 
-  let prog=packed/total;
-  let time=timeProgress();
+/* STATUS */
+function updateStatus(){
 
-  const box=document.getElementById("statusCircle");
+  let progress = packed / total;
+  let box = document.getElementById("status");
 
-  if(prog>=time){
+  if(progress >= 0.9){
     box.style.background="green";
     box.innerText="On Track";
-  } else if(prog>=time-0.1){
+  }
+  else if(progress >= 0.7){
     box.style.background="orange";
-    box.innerText="Slightly Behind";
-  } else {
+    box.innerText="Warning";
+  }
+  else{
     box.style.background="red";
     box.innerText="Behind";
   }
-
-  updateRequired();
 }
 
-/* REQUIRED */
-function updateRequired(){
-
-  const expected=total*timeProgress();
-  const diff=expected-packed;
-
-  const el=document.getElementById("requiredText");
-
-  if(diff<=0){
-    el.innerText="On track (0 units needed)";
-    el.style.color="#00ff88";
-  } else {
-    el.innerText="Need "+Math.ceil(diff)+" units to be on track";
-    el.style.color="orange";
-  }
-}
-
-/* END */
-function endProduction(){
-
-  let pass=prompt("Enter password:");
-  if(!passwords.includes(pass)){
-    alert("Access denied");
-    return;
-  }
-
-  sessionStorage.removeItem("auth");
-
-  const pushed=total-packed;
-  const percent=((packed/total)*100).toFixed(1);
-
-  document.getElementById("mainScreen").style.display="none";
-  document.getElementById("summary").style.display="block";
-
-  document.getElementById("summary").innerHTML=`
-    <h2>Final Report</h2>
-    <p>Packed: ${packed}</p>
-    <p>Pushed: ${pushed}</p>
-    <p>Completed: ${percent}%</p>
-  `;
-}
-
-setInterval(updateAll,60000);
+/* INITIAL LOAD */
+load();
 
 </script>
 
