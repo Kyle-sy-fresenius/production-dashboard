@@ -40,13 +40,12 @@ button{
   cursor:pointer;
 }
 
-/* MAIN LAYOUT */
+/* LAYOUT */
 .frame{
   display:flex;
   justify-content:space-between;
   gap:20px;
   margin-top:20px;
-  align-items:flex-start;
 }
 
 /* LEFT PANEL */
@@ -61,21 +60,6 @@ button{
   border-radius:12px;
   padding:12px;
   box-sizing:border-box;
-}
-
-/* STATUS RING */
-#statusRing{
-  width:160px;
-  height:160px;
-  border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:bold;
-  font-size:16px;
-  text-align:center;
-  border:6px solid rgba(255,255,255,0.25);
-  box-shadow:0 0 25px rgba(255,255,255,0.25);
 }
 
 /* CENTER PANEL */
@@ -97,7 +81,7 @@ button{
   height:180px;
 }
 
-/* LAST 4 ADDS */
+/* LAST 4 */
 .recentMini{
   text-align:left;
   font-size:14px;
@@ -114,17 +98,21 @@ button{
   opacity:0.5;
 }
 
-/* TRACK TEXT */
+/* STATUS */
 #trackText{
   margin-top:10px;
   font-size:14px;
 }
 
-/* END BUTTON FIX */
-button[onclick="endShift()"]{
-  width:100%;
-  max-width:260px;
-  margin-top:20px;
+/* SUMMARY */
+#summaryScreen{
+  display:none;
+}
+
+.summaryBox{
+  margin-top:40px;
+  font-size:22px;
+  line-height:40px;
 }
 </style>
 </head>
@@ -141,7 +129,7 @@ button[onclick="endShift()"]{
   <button onclick="start()">Start</button>
 </div>
 
-<!-- MAIN -->
+<!-- DASHBOARD -->
 <div id="mainScreen" style="display:none;">
 
 <div>Total: <span id="totalShow">0</span></div>
@@ -178,45 +166,30 @@ End Production
 
 </div>
 
+<!-- SUMMARY -->
+<div id="summaryScreen">
+
+  <h2>Shift Summary</h2>
+
+  <div class="summaryBox">
+    Packed: <span id="sumPacked"></span><br>
+    Total: <span id="sumTotal"></span><br>
+    Percentage: <span id="sumPercent"></span>
+  </div>
+
+  <button onclick="backToDashboard()">Back to Dashboard</button>
+
+</div>
+
 </div>
 
 <script>
 
-/* SUPABASE */
-const sb = supabase.createClient(
-  "https://afakpgezcpvvnvoqcthj.supabase.co",
-  "sb_publishable_n7KfiuQXIE_hekGgd3eXsQ_gEqaJ_9Y"
-);
-
-/* STATE */
 let total=0;
 let packed=0;
 let recent=[];
 let chart;
 let started=false;
-
-/* LOAD */
-async function load(){
-  const { data } = await sb
-    .from("production_dashboard")
-    .select("*")
-    .eq("id",1)
-    .single();
-
-  if(!data) return;
-
-  total = data.total;
-  packed = data.packed;
-  recent = data.recent_adds || [];
-
-  started = total > 0;
-
-  showMain();
-  createChart();
-  update();
-}
-
-load();
 
 /* START */
 function start(){
@@ -225,7 +198,6 @@ function start(){
   recent = [];
   started = true;
 
-  save();
   showMain();
   createChart();
   update();
@@ -242,24 +214,49 @@ function add(){
   if(recent.length > 50) recent.pop();
 
   addInput.value="";
-  save();
   update();
 }
 
-/* SAVE */
-async function save(){
-  await sb.from("production_dashboard").upsert({
-    id:1,
-    total,
-    packed,
-    recent_adds:recent
-  });
-}
-
-/* SHOW */
+/* SHOW DASHBOARD */
 function showMain(){
   startScreen.style.display="none";
   mainScreen.style.display="block";
+  summaryScreen.style.display="none";
+}
+
+/* END SHIFT */
+function endShift(){
+  const password = prompt("Enter password:");
+
+  const allowed = [
+    "Kyle","Sofiya","Anjali","Osama","Elamari",
+    "Elham","Krithika","Niroshan","Lokesh","Netra"
+  ];
+
+  if(!allowed.includes(password)){
+    alert("Incorrect password");
+    return;
+  }
+
+  let percent = total ? ((packed/total)*100).toFixed(1) : 0;
+
+  sumPacked.innerText = packed;
+  sumTotal.innerText = total;
+  sumPercent.innerText = percent + "%";
+
+  mainScreen.style.display="none";
+  summaryScreen.style.display="block";
+}
+
+/* RESET FULL STATE */
+function backToDashboard(){
+  total=0;
+  packed=0;
+  recent=[];
+  started=false;
+
+  summaryScreen.style.display="none";
+  startScreen.style.display="block";
 }
 
 /* CHART */
@@ -292,7 +289,7 @@ function createChart(){
   });
 }
 
-/* UPDATE */
+/* UPDATE UI */
 function update(){
 
   totalShow.innerText = total;
@@ -305,30 +302,13 @@ function update(){
   ];
   chart.update();
 
-  const ring = document.getElementById("statusRing");
-  const trackText = document.getElementById("trackText");
-
   const ratio = total ? packed/total : 0;
 
-  if(!started){
-    ring.innerText="--";
-  }
-  else if(ratio >= 1){
-    ring.innerText="100% COMPLETE";
-    ring.style.border="6px solid #00ff88";
-  }
-  else if(ratio >= 0.8){
-    ring.innerText=Math.round(ratio*100)+"% ON TRACK";
-    ring.style.border="6px solid #00ff88";
-  }
-  else if(ratio >= 0.5){
-    ring.innerText=Math.round(ratio*100)+"% SLOW";
-    ring.style.border="6px solid orange";
-  }
-  else{
-    ring.innerText=Math.round(ratio*100)+"% CRITICAL";
-    ring.style.border="6px solid red";
-  }
+  statusRing.innerText =
+    ratio >= 1 ? "100% COMPLETE" :
+    ratio >= 0.8 ? Math.round(ratio*100)+"% ON TRACK" :
+    ratio >= 0.5 ? Math.round(ratio*100)+"% SLOW" :
+    Math.round(ratio*100)+"% CRITICAL";
 
   trackText.innerText = started
     ? (packed >= total
@@ -336,30 +316,12 @@ function update(){
         : "Need " + (total-packed) + " units to finish")
     : "";
 
-  /* LAST 4 ADDS */
   const last4 = recent.slice(0,4);
 
-  document.getElementById("recentTop").innerHTML =
+  recentTop.innerHTML =
     last4.map((v,i)=>`
       <div class="recentItem ${i===0?'':'fade'}">+${v}</div>
     `).join("");
-}
-
-/* END */
-function endShift(){
-  const password = prompt("Enter password:");
-
-  const allowed = [
-    "Kyle","Sofiya","Anjali","Osama","Elamari",
-    "Elham","Krithika","Niroshan","Lokesh","Netra"
-  ];
-
-  if(!allowed.includes(password)){
-    alert("Incorrect password");
-    return;
-  }
-
-  alert("Shift complete!");
 }
 
 </script>
