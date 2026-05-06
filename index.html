@@ -40,17 +40,17 @@ button{
   cursor:pointer;
 }
 
-/* LAYOUT */
+/* ✅ TIGHTER FRAME LAYOUT */
 .frame{
   display:flex;
-  justify-content:space-between;
-  gap:20px;
+  justify-content:center;
+  gap:8px;   /* 👈 reduced gap */
   margin-top:20px;
 }
 
 /* LEFT PANEL */
 .panel{
-  width:45%;
+  width:48%;   /* 👈 widened */
   height:260px;
   display:flex;
   flex-direction:column;
@@ -78,9 +78,9 @@ button{
   transition:0.3s;
 }
 
-/* CENTER PANEL */
+/* RIGHT PANEL */
 .centerPanel{
-  width:45%;
+  width:48%;   /* 👈 widened */
   height:260px;
   display:flex;
   align-items:center;
@@ -97,7 +97,7 @@ button{
   height:180px;
 }
 
-/* LAST 4 ADDS */
+/* LAST 4 */
 .recentMini{
   text-align:left;
   font-size:14px;
@@ -163,7 +163,7 @@ button{
   <div id="trackText"></div>
 </div>
 
-<!-- CENTER -->
+<!-- RIGHT -->
 <div class="centerPanel">
 
   <div id="chartBox">
@@ -212,7 +212,7 @@ let recent=[];
 let chart;
 let started=false;
 
-/* LOAD (persist on refresh) */
+/* LOAD */
 async function load(){
   const { data } = await sb
     .from("production_dashboard")
@@ -364,7 +364,7 @@ function createChart(){
   });
 }
 
-/* UI UPDATE */
+/* UPDATE */
 function update(){
 
   totalShow.innerText=total;
@@ -412,7 +412,7 @@ function update(){
     : "";
 }
 
-/* 🔥 FIXED RECENT PANEL */
+/* RECENT */
 function renderRecent(){
   const last4 = recent.slice(0,4);
 
