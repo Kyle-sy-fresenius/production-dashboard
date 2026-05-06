@@ -49,7 +49,7 @@ button{
   align-items:flex-start;
 }
 
-/* STATUS PANEL */
+/* LEFT PANEL */
 .panel{
   width:45%;
   height:260px;
@@ -63,63 +63,43 @@ button{
   box-sizing:border-box;
 }
 
-/* PIE AREA */
+/* CENTER PANEL (PIE + LAST 4) */
+.centerPanel{
+  width:45%;
+  height:260px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  border:2px solid white;
+  border-radius:12px;
+  padding:12px;
+  box-sizing:border-box;
+}
+
+/* PIE */
 #chartBox{
   width:180px;
   height:180px;
 }
 
-/* STATUS RING */
-#statusRing{
-  width:180px;
-  height:180px;
-  border-radius:50%;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-weight:bold;
-  transition:0.3s;
-  border:6px solid rgba(255,255,255,0.2);
-  box-shadow:0 0 20px rgba(255,255,255,0.2);
-}
-
-/* RIGHT SIDE LIST (IMPORTANT CHANGE) */
-.listPanel{
-  width:45%;
-  height:260px;
-  border:2px solid white;
-  border-radius:12px;
-  padding:12px;
-  box-sizing:border-box;
-  overflow:hidden;
+/* LAST 4 ADDED VALUES */
+.recentMini{
   text-align:left;
-}
-
-/* LAST 4 ALWAYS VISIBLE */
-#recentTop{
-  min-height:90px;
   font-size:14px;
+  line-height:22px;
+  padding-left:10px;
+  min-width:120px;
 }
 
 .recentItem{
   margin:3px 0;
-  line-height:18px;
 }
 
 .fade{
-  opacity:0.4;
+  opacity:0.5;
 }
 
-/* SCROLL HISTORY */
-#recentScroll{
-  margin-top:10px;
-  max-height:110px;
-  overflow-y:auto;
-  font-size:12px;
-  border-top:1px solid rgba(255,255,255,0.2);
-  padding-top:8px;
-}
-
+/* STATUS TEXT */
 #trackText{
   margin-top:10px;
   font-size:14px;
@@ -133,13 +113,13 @@ button{
 
 <div class="card">
 
-<!-- START -->
+<!-- START SCREEN -->
 <div id="startScreen">
   <input id="totalInput" type="number" placeholder="Total units">
   <button onclick="start()">Start</button>
 </div>
 
-<!-- MAIN -->
+<!-- MAIN SCREEN -->
 <div id="mainScreen" style="display:none;">
 
 <div>Total: <span id="totalShow">0</span></div>
@@ -151,24 +131,20 @@ button{
 
 <div class="frame">
 
-<!-- LEFT: STATUS -->
+<!-- LEFT PANEL -->
 <div class="panel">
   <div id="statusRing">--</div>
   <div id="trackText"></div>
 </div>
 
-<!-- CENTER: PIE -->
-<div class="panel">
+<!-- CENTER PANEL -->
+<div class="centerPanel">
+
   <div id="chartBox">
     <canvas id="chart"></canvas>
   </div>
-</div>
 
-<!-- RIGHT: LIST -->
-<div class="listPanel">
-
-  <div id="recentTop"></div>
-  <div id="recentScroll"></div>
+  <div class="recentMini" id="recentTop"></div>
 
 </div>
 
@@ -307,7 +283,6 @@ function update(){
   ];
   chart.update();
 
-  /* TRACK */
   const ring = document.getElementById("statusRing");
   const trackText = document.getElementById("trackText");
 
@@ -339,18 +314,12 @@ function update(){
         : "Need " + (total-packed) + " units to finish")
     : "";
 
-  /* LAST 4 */
+  /* LAST 4 ADDED VALUES */
   const last4 = recent.slice(0,4);
-  const rest = recent.slice(4);
 
   document.getElementById("recentTop").innerHTML =
     last4.map((v,i)=>`
       <div class="recentItem ${i===0?'':'fade'}">+${v}</div>
-    `).join("");
-
-  document.getElementById("recentScroll").innerHTML =
-    rest.map(v=>`
-      <div class="recentItem fade">+${v}</div>
     `).join("");
 }
 
