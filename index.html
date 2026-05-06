@@ -60,7 +60,7 @@ button{
   box-sizing:border-box;
 }
 
-/* chart + ring same size */
+/* chart + ring */
 #chartBox, #statusRing{
   width:180px;
   height:180px;
@@ -102,6 +102,12 @@ button{
   background:#ff4d4d;
   color:white;
 }
+
+/* tracking text */
+#trackText{
+  margin-top:10px;
+  font-size:14px;
+}
 </style>
 </head>
 
@@ -129,10 +135,13 @@ button{
 
 <div class="frame">
 
+<!-- STATUS -->
 <div class="panel">
   <div id="statusRing">--</div>
+  <div id="trackText"></div>
 </div>
 
+<!-- PIE -->
 <div class="panel">
 
 <div class="legend">🟢 Packed | 🔴 Remaining</div>
@@ -302,24 +311,49 @@ function update(){
   ];
   chart.update();
 
-  const ring = document.getElementById("statusRing");
-  const ratio = total ? packed/total : 0;
+  /* TRACKING */
+  const now = new Date();
+  const start = new Date(); start.setHours(8,30,0,0);
+  const end = new Date(); end.setHours(21,30,0,0);
 
-  if(ratio >= 1){
+  let timeProgress = (now - start) / (end - start);
+  timeProgress = Math.max(0, Math.min(1, timeProgress));
+
+  let expected = total * timeProgress;
+  let diff = packed - expected;
+
+  let ratio = total ? packed / total : 0;
+
+  const ring = document.getElementById("statusRing");
+  const trackText = document.getElementById("trackText");
+
+  if (ratio >= 1) {
     ring.innerText = "100%";
-    ring.style.border="6px solid #00ff88";
-    ring.style.boxShadow="0 0 25px #00ff88";
+    ring.style.border = "6px solid #00ff88";
+    ring.style.boxShadow = "0 0 25px #00ff88";
   }
-  else if(ratio >= 0.8){
-    ring.innerText = Math.round(ratio*100)+"%";
-    ring.style.border="6px solid orange";
-    ring.style.boxShadow="0 0 25px orange";
+  else if (diff >= 0) {
+    ring.innerText = Math.round(ratio * 100) + "% ON TRACK";
+    ring.style.border = "6px solid #00ff88";
+    ring.style.boxShadow = "0 0 25px #00ff88";
   }
-  else{
-    ring.innerText = Math.round(ratio*100)+"%";
-    ring.style.border="6px solid red";
-    ring.style.boxShadow="0 0 25px red";
+  else if (diff >= -total * 0.1) {
+    ring.innerText = Math.round(ratio * 100) + "%";
+    ring.style.border = "6px solid orange";
+    ring.style.boxShadow = "0 0 25px orange";
   }
+  else {
+    ring.innerText = Math.round(ratio * 100) + "%";
+    ring.style.border = "6px solid red";
+    ring.style.boxShadow = "0 0 25px red";
+  }
+
+  let needed = expected - packed;
+
+  trackText.innerText =
+    needed <= 0
+      ? "On track for shift pace"
+      : "Need " + Math.ceil(needed) + " units to be on track";
 
   document.getElementById("recentAdds").innerHTML =
     recent.map((v,i)=>
@@ -327,7 +361,7 @@ function update(){
     ).join("");
 }
 
-/* END SHIFT + PASSWORD + RESET */
+/* END SHIFT */
 function endShift(){
 
   const password = prompt("Enter password to end production:");
@@ -353,9 +387,14 @@ function endShift(){
   reportScreen.style.display="block";
 
   resetAll();
+
+  setTimeout(() => {
+    reportScreen.style.display="none";
+    startScreen.style.display="block";
+  }, 2500);
 }
 
-/* RESET EVERYTHING */
+/* RESET */
 function resetAll(){
 
   total = 0;
