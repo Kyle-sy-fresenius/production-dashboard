@@ -84,25 +84,31 @@ button{
   opacity:0.9;
 }
 
-/* LIST */
-#recentAdds{
-  margin-top:10px;
-  font-size:12px;
-  text-align:left;
+/* FIXED 4-VISIBLE LIST */
+#recentTop{
   width:100%;
-  max-height:110px;
+  font-size:12px;
+  margin-top:10px;
+  min-height:80px;
+}
+
+#recentScroll{
+  width:100%;
+  max-height:70px;
   overflow-y:auto;
+  font-size:12px;
+  margin-top:6px;
+  border-top:1px solid rgba(255,255,255,0.2);
+  padding-top:5px;
 }
 
 .recentItem{
   margin:2px 0;
-  transition: all 0.2s ease;
+  transition:0.2s;
 }
 
-/* FADE EFFECT */
 .fade{
   opacity:0.35;
-  transform:scale(0.98);
 }
 
 #endBtn{
@@ -157,7 +163,9 @@ button{
   <canvas id="chart"></canvas>
 </div>
 
-<div id="recentAdds"></div>
+<!-- LIST -->
+<div id="recentTop"></div>
+<div id="recentScroll"></div>
 
 </div>
 
@@ -207,10 +215,11 @@ const packedShow = document.getElementById("packedShow");
 const remainingShow = document.getElementById("remainingShow");
 
 /* STATE */
-let total=0;
-let packed=0;
-let recent=[];
+let total = 0;
+let packed = 0;
+let recent = [];
 let chart;
+let started = false;
 
 /* LOAD */
 async function load(){
@@ -237,6 +246,9 @@ load();
 function start(){
   total = parseFloat(totalInput.value);
   packed = 0;
+  recent = [];
+
+  started = true;
 
   save();
   showMain();
@@ -252,7 +264,7 @@ function add(){
   packed += v;
 
   recent.unshift(v);
-  if(recent.length>50) recent.pop();
+  if(recent.length > 50) recent.pop();
 
   addInput.value="";
   save();
@@ -318,32 +330,66 @@ function update(){
   ];
   chart.update();
 
+  /* TRACKING */
+  const now = new Date();
+  const start = new Date(); start.setHours(8,30,0,0);
+  const end = new Date(); end.setHours(21,30,0,0);
+
+  let timeProgress = started
+    ? (now - start) / (end - start)
+    : 0;
+
+  timeProgress = Math.max(0, Math.min(1, timeProgress));
+
+  let expected = total * timeProgress;
+  let diff = packed - expected;
+
+  let ratio = total ? packed / total : 0;
+
   const ring = document.getElementById("statusRing");
   const trackText = document.getElementById("trackText");
 
-  let ratio = total ? packed/total : 0;
-
-  ring.innerText = Math.round(ratio*100) + "%";
-
-  if(ratio >= 1){
-    ring.style.border = "6px solid #00ff88";
-  } else {
-    ring.style.border = "6px solid orange";
+  /* RING */
+  if(!started){
+    ring.innerText="--";
+    ring.style.border="6px solid rgba(255,255,255,0.2)";
+  }
+  else if(ratio >= 1){
+    ring.innerText="100% COMPLETE";
+    ring.style.border="6px solid #00ff88";
+  }
+  else if(diff >= 0){
+    ring.innerText=Math.round(ratio*100)+"% ON TRACK";
+    ring.style.border="6px solid #00ff88";
+  }
+  else{
+    ring.innerText=Math.round(ratio*100)+"%";
+    ring.style.border="6px solid red";
   }
 
-  trackText.innerText =
-    packed >= total
+  /* TEXT */
+  let needed = expected - packed;
+
+  trackText.innerText = !started
+    ? ""
+    : (needed <= 0
       ? "On track"
-      : "Need " + (total-packed) + " units to finish";
+      : "Need " + Math.ceil(needed) + " units to be on track");
 
-  /* 🔥 LAST 4 ONLY + FADE */
+  /* LIST: ALWAYS 4 VISIBLE */
   const last4 = recent.slice(0,4);
+  const rest = recent.slice(4);
 
-  document.getElementById("recentAdds").innerHTML =
+  document.getElementById("recentTop").innerHTML =
     last4.map((v,i)=>`
-      <div class="recentItem ${i===0 ? '' : 'fade'}">
+      <div class="recentItem ${i===0?'':'fade'}">
         +${v}
       </div>
+    `).join("");
+
+  document.getElementById("recentScroll").innerHTML =
+    rest.map(v=>`
+      <div class="recentItem fade">+${v}</div>
     `).join("");
 }
 
@@ -380,7 +426,7 @@ function endShift(){
   }, 2500);
 }
 
-/* BACK */
+/* BACK RESET */
 function backToMain(){
 
   reportScreen.style.display="none";
@@ -390,6 +436,7 @@ function backToMain(){
   total=0;
   packed=0;
   recent=[];
+  started=false;
 
   totalInput.value="";
   addInput.value="";
@@ -398,17 +445,15 @@ function backToMain(){
   packedShow.innerText="0";
   remainingShow.innerText="0";
 
-  document.getElementById("recentAdds").innerHTML="";
+  document.getElementById("recentTop").innerHTML="";
+  document.getElementById("recentScroll").innerHTML="";
 
   if(chart){
     chart.data.datasets[0].data=[0,0];
     chart.update();
   }
 
-  const ring=document.getElementById("statusRing");
-  ring.innerText="--";
-  ring.style.border="6px solid rgba(255,255,255,0.2)";
-
+  document.getElementById("statusRing").innerText="--";
   document.getElementById("trackText").innerText="";
 }
 
