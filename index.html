@@ -84,12 +84,12 @@ button{
   opacity:0.9;
 }
 
-/* FIXED 4-VISIBLE LIST */
+/* FIXED LIST SPACE */
 #recentTop{
   width:100%;
   font-size:12px;
   margin-top:10px;
-  min-height:80px;
+  min-height:90px;   /* ensures 4 visible rows */
 }
 
 #recentScroll{
@@ -104,6 +104,7 @@ button{
 
 .recentItem{
   margin:2px 0;
+  line-height:18px;
   transition:0.2s;
 }
 
@@ -163,7 +164,6 @@ button{
   <canvas id="chart"></canvas>
 </div>
 
-<!-- LIST -->
 <div id="recentTop"></div>
 <div id="recentScroll"></div>
 
@@ -247,7 +247,6 @@ function start(){
   total = parseFloat(totalInput.value);
   packed = 0;
   recent = [];
-
   started = true;
 
   save();
@@ -349,7 +348,7 @@ function update(){
   const ring = document.getElementById("statusRing");
   const trackText = document.getElementById("trackText");
 
-  /* RING */
+  /* RING WITH PROPER AMBER */
   if(!started){
     ring.innerText="--";
     ring.style.border="6px solid rgba(255,255,255,0.2)";
@@ -362,12 +361,15 @@ function update(){
     ring.innerText=Math.round(ratio*100)+"% ON TRACK";
     ring.style.border="6px solid #00ff88";
   }
+  else if(diff >= -total * 0.1){
+    ring.innerText=Math.round(ratio*100)+"% SLOW";
+    ring.style.border="6px solid orange";
+  }
   else{
-    ring.innerText=Math.round(ratio*100)+"%";
+    ring.innerText=Math.round(ratio*100)+"% CRITICAL";
     ring.style.border="6px solid red";
   }
 
-  /* TEXT */
   let needed = expected - packed;
 
   trackText.innerText = !started
@@ -376,7 +378,7 @@ function update(){
       ? "On track"
       : "Need " + Math.ceil(needed) + " units to be on track");
 
-  /* LIST: ALWAYS 4 VISIBLE */
+  /* LAST 4 ALWAYS VISIBLE */
   const last4 = recent.slice(0,4);
   const rest = recent.slice(4);
 
