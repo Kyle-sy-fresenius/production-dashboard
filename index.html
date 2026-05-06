@@ -84,6 +84,7 @@ button{
   opacity:0.9;
 }
 
+/* LIST */
 #recentAdds{
   margin-top:10px;
   font-size:12px;
@@ -93,8 +94,16 @@ button{
   overflow-y:auto;
 }
 
-.recentItem{margin:2px 0;}
-.fade{opacity:0.4;}
+.recentItem{
+  margin:2px 0;
+  transition: all 0.2s ease;
+}
+
+/* FADE EFFECT */
+.fade{
+  opacity:0.35;
+  transform:scale(0.98);
+}
 
 #endBtn{
   margin-top:15px;
@@ -115,13 +124,13 @@ button{
 
 <div class="card">
 
-<!-- START SCREEN -->
+<!-- START -->
 <div id="startScreen">
   <input id="totalInput" type="number" placeholder="Total units">
   <button onclick="start()">Start</button>
 </div>
 
-<!-- MAIN SCREEN -->
+<!-- MAIN -->
 <div id="mainScreen" style="display:none;">
 
 <div>Total: <span id="totalShow">0</span></div>
@@ -160,7 +169,7 @@ button{
 
 </div>
 
-<!-- REPORT SCREEN -->
+<!-- REPORT -->
 <div id="reportScreen" style="display:none;" class="card">
 
 <h1>Shift Report</h1>
@@ -260,7 +269,7 @@ async function save(){
   });
 }
 
-/* SHOW MAIN */
+/* SHOW */
 function showMain(){
   startScreen.style.display="none";
   mainScreen.style.display="block";
@@ -309,53 +318,33 @@ function update(){
   ];
   chart.update();
 
-  const now = new Date();
-  const start = new Date(); start.setHours(8,30,0,0);
-  const end = new Date(); end.setHours(21,30,0,0);
-
-  let timeProgress = (now - start) / (end - start);
-  timeProgress = Math.max(0, Math.min(1, timeProgress));
-
-  let expected = total * timeProgress;
-  let diff = packed - expected;
-
-  let ratio = total ? packed / total : 0;
-
   const ring = document.getElementById("statusRing");
   const trackText = document.getElementById("trackText");
 
-  if (ratio >= 1) {
-    ring.innerText = "100%";
-    ring.style.border = "6px solid #00ff88";
-    ring.style.boxShadow = "0 0 25px #00ff88";
-  }
-  else if (diff >= 0) {
-    ring.innerText = Math.round(ratio * 100) + "% ON TRACK";
-    ring.style.border = "6px solid #00ff88";
-    ring.style.boxShadow = "0 0 25px #00ff88";
-  }
-  else if (diff >= -total * 0.1) {
-    ring.innerText = Math.round(ratio * 100) + "%";
-    ring.style.border = "6px solid orange";
-    ring.style.boxShadow = "0 0 25px orange";
-  }
-  else {
-    ring.innerText = Math.round(ratio * 100) + "%";
-    ring.style.border = "6px solid red";
-    ring.style.boxShadow = "0 0 25px red";
-  }
+  let ratio = total ? packed/total : 0;
 
-  let needed = expected - packed;
+  ring.innerText = Math.round(ratio*100) + "%";
+
+  if(ratio >= 1){
+    ring.style.border = "6px solid #00ff88";
+  } else {
+    ring.style.border = "6px solid orange";
+  }
 
   trackText.innerText =
-    needed <= 0
-      ? "On track for shift pace"
-      : "Need " + Math.ceil(needed) + " units to be on track";
+    packed >= total
+      ? "On track"
+      : "Need " + (total-packed) + " units to finish";
+
+  /* 🔥 LAST 4 ONLY + FADE */
+  const last4 = recent.slice(0,4);
 
   document.getElementById("recentAdds").innerHTML =
-    recent.map((v,i)=>
-      `<div class="recentItem ${i>=4?'fade':''}">+${v}</div>`
-    ).join("");
+    last4.map((v,i)=>`
+      <div class="recentItem ${i===0 ? '' : 'fade'}">
+        +${v}
+      </div>
+    `).join("");
 }
 
 /* END SHIFT */
@@ -387,73 +376,47 @@ function endShift(){
 
   setTimeout(() => {
     reportScreen.style.display="none";
-    mainScreen.style.display="none";
     startScreen.style.display="block";
   }, 2500);
 }
 
-/* FULL RESET BACK TO START */
+/* BACK */
 function backToMain(){
 
   reportScreen.style.display="none";
   mainScreen.style.display="none";
   startScreen.style.display="block";
 
-  total = 0;
-  packed = 0;
-  recent = [];
+  total=0;
+  packed=0;
+  recent=[];
 
-  totalInput.value = "";
-  addInput.value = "";
+  totalInput.value="";
+  addInput.value="";
 
-  totalShow.innerText = "0";
-  packedShow.innerText = "0";
-  remainingShow.innerText = "0";
+  totalShow.innerText="0";
+  packedShow.innerText="0";
+  remainingShow.innerText="0";
 
-  document.getElementById("recentAdds").innerHTML = "";
+  document.getElementById("recentAdds").innerHTML="";
 
   if(chart){
-    chart.data.datasets[0].data = [0,0];
+    chart.data.datasets[0].data=[0,0];
     chart.update();
   }
 
-  const ring = document.getElementById("statusRing");
-  ring.innerText = "--";
-  ring.style.border = "6px solid rgba(255,255,255,0.2)";
-  ring.style.boxShadow = "0 0 20px rgba(255,255,255,0.2)";
+  const ring=document.getElementById("statusRing");
+  ring.innerText="--";
+  ring.style.border="6px solid rgba(255,255,255,0.2)";
 
-  const trackText = document.getElementById("trackText");
-  trackText.innerText = "";
-
-  save();
+  document.getElementById("trackText").innerText="";
 }
 
-/* RESET (used by end shift) */
+/* RESET */
 function resetAll(){
-
-  total = 0;
-  packed = 0;
-  recent = [];
-
-  totalInput.value = "";
-  addInput.value = "";
-
-  totalShow.innerText = "0";
-  packedShow.innerText = "0";
-  remainingShow.innerText = "0";
-
-  document.getElementById("recentAdds").innerHTML = "";
-
-  if(chart){
-    chart.data.datasets[0].data = [0,0];
-    chart.update();
-  }
-
-  const ring = document.getElementById("statusRing");
-  ring.innerText = "--";
-  ring.style.border = "6px solid rgba(255,255,255,0.2)";
-  ring.style.boxShadow = "0 0 20px rgba(255,255,255,0.2)";
-
+  total=0;
+  packed=0;
+  recent=[];
   save();
 }
 
