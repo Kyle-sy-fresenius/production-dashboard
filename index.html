@@ -62,7 +62,7 @@ button{
   box-sizing:border-box;
 }
 
-/* 🔴🟠🟢 STATUS RING (RESTORED + GLOW FIX) */
+/* STATUS RING */
 #statusRing{
   width:160px;
   height:160px;
@@ -74,8 +74,8 @@ button{
   font-size:15px;
   text-align:center;
   border:6px solid rgba(255,255,255,0.2);
-  transition:0.3s ease;
   box-shadow:0 0 20px rgba(255,255,255,0.2);
+  transition:0.3s;
 }
 
 /* CENTER PANEL */
@@ -97,7 +97,7 @@ button{
   height:180px;
 }
 
-/* LAST 4 */
+/* LAST 4 ADDS */
 .recentMini{
   text-align:left;
   font-size:14px;
@@ -201,11 +201,40 @@ End Production
 
 <script>
 
+const sb = supabase.createClient(
+  "https://afakpgezcpvvnvoqcthj.supabase.co",
+  "sb_publishable_n7KfiuQXIE_hekGgd3eXsQ_gEqaJ_9Y"
+);
+
 let total=0;
 let packed=0;
 let recent=[];
 let chart;
 let started=false;
+
+/* LOAD (persist on refresh) */
+async function load(){
+  const { data } = await sb
+    .from("production_dashboard")
+    .select("*")
+    .eq("id",1)
+    .single();
+
+  if(!data) return;
+
+  total = data.total;
+  packed = data.packed;
+  recent = data.recent_adds || [];
+
+  started = total > 0;
+
+  showMain();
+  createChart();
+  update();
+  renderRecent();
+}
+
+load();
 
 /* START */
 function start(){
@@ -214,9 +243,11 @@ function start(){
   recent = [];
   started = true;
 
+  save();
   showMain();
   createChart();
   update();
+  renderRecent();
 }
 
 /* ADD */
@@ -230,7 +261,19 @@ function add(){
   if(recent.length > 50) recent.pop();
 
   addInput.value="";
+  save();
   update();
+  renderRecent();
+}
+
+/* SAVE */
+async function save(){
+  await sb.from("production_dashboard").upsert({
+    id:1,
+    total,
+    packed,
+    recent_adds:recent
+  });
 }
 
 /* SHOW DASHBOARD */
@@ -264,12 +307,28 @@ function endShift(){
   summaryScreen.style.display="block";
 }
 
-/* RESET */
+/* RESET ONLY HERE */
 function backToDashboard(){
+
   total=0;
   packed=0;
   recent=[];
   started=false;
+
+  totalInput.value="";
+  addInput.value="";
+
+  statusRing.innerText="--";
+  statusRing.style.border="6px solid rgba(255,255,255,0.2)";
+  statusRing.style.boxShadow="0 0 20px rgba(255,255,255,0.2)";
+
+  trackText.innerText="";
+  recentTop.innerHTML="";
+
+  if(chart){
+    chart.data.datasets[0].data=[0,0];
+    chart.update();
+  }
 
   summaryScreen.style.display="none";
   startScreen.style.display="block";
@@ -305,28 +364,25 @@ function createChart(){
   });
 }
 
-/* 🔴🟠🟢 UPDATED RING LOGIC (WITH GLOW) */
+/* UI UPDATE */
 function update(){
 
-  totalShow.innerText = total;
-  packedShow.innerText = packed;
-  remainingShow.innerText = Math.max(total-packed,0);
+  totalShow.innerText=total;
+  packedShow.innerText=packed;
+  remainingShow.innerText=Math.max(total-packed,0);
 
-  chart.data.datasets[0].data = [
+  chart.data.datasets[0].data=[
     Math.min(packed,total),
     Math.max(total-packed,0)
   ];
   chart.update();
 
-  const ring = document.getElementById("statusRing");
-  const trackText = document.getElementById("trackText");
-
   const ratio = total ? packed/total : 0;
+
+  const ring = document.getElementById("statusRing");
 
   if(!started){
     ring.innerText="--";
-    ring.style.border="6px solid rgba(255,255,255,0.2)";
-    ring.style.boxShadow="0 0 20px rgba(255,255,255,0.2)";
   }
   else if(ratio >= 1){
     ring.innerText="100% COMPLETE";
@@ -354,13 +410,17 @@ function update(){
         ? "On track"
         : "Need " + (total-packed) + " units to finish")
     : "";
+}
 
+/* 🔥 FIXED RECENT PANEL */
+function renderRecent(){
   const last4 = recent.slice(0,4);
 
-  recentTop.innerHTML =
-    last4.map((v,i)=>`
-      <div class="recentItem ${i===0?'':'fade'}">+${v}</div>
-    `).join("");
+  recentTop.innerHTML = last4.length
+    ? last4.map((v,i)=>`
+        <div class="recentItem ${i===0?'':'fade'}">+${v}</div>
+      `).join("")
+    : `<div class="recentItem fade">No entries</div>`;
 }
 
 </script>
