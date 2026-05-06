@@ -56,14 +56,29 @@ button{
   display:flex;
   flex-direction:column;
   align-items:center;
-  justify-content:flex-start;
+  justify-content:center;
   border:2px solid white;
   border-radius:12px;
   padding:12px;
   box-sizing:border-box;
 }
 
-/* CENTER PANEL (PIE + LAST 4) */
+/* STATUS RING */
+#statusRing{
+  width:160px;
+  height:160px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-weight:bold;
+  font-size:16px;
+  text-align:center;
+  border:6px solid rgba(255,255,255,0.25);
+  box-shadow:0 0 25px rgba(255,255,255,0.25);
+}
+
+/* CENTER PANEL */
 .centerPanel{
   width:45%;
   height:260px;
@@ -82,7 +97,7 @@ button{
   height:180px;
 }
 
-/* LAST 4 ADDED VALUES */
+/* LAST 4 ADDS */
 .recentMini{
   text-align:left;
   font-size:14px;
@@ -99,10 +114,17 @@ button{
   opacity:0.5;
 }
 
-/* STATUS TEXT */
+/* TRACK TEXT */
 #trackText{
   margin-top:10px;
   font-size:14px;
+}
+
+/* END BUTTON FIX */
+button[onclick="endShift()"]{
+  width:100%;
+  max-width:260px;
+  margin-top:20px;
 }
 </style>
 </head>
@@ -113,13 +135,13 @@ button{
 
 <div class="card">
 
-<!-- START SCREEN -->
+<!-- START -->
 <div id="startScreen">
   <input id="totalInput" type="number" placeholder="Total units">
   <button onclick="start()">Start</button>
 </div>
 
-<!-- MAIN SCREEN -->
+<!-- MAIN -->
 <div id="mainScreen" style="display:none;">
 
 <div>Total: <span id="totalShow">0</span></div>
@@ -131,13 +153,13 @@ button{
 
 <div class="frame">
 
-<!-- LEFT PANEL -->
+<!-- LEFT -->
 <div class="panel">
   <div id="statusRing">--</div>
   <div id="trackText"></div>
 </div>
 
-<!-- CENTER PANEL -->
+<!-- CENTER -->
 <div class="centerPanel">
 
   <div id="chartBox">
@@ -314,7 +336,7 @@ function update(){
         : "Need " + (total-packed) + " units to finish")
     : "";
 
-  /* LAST 4 ADDED VALUES */
+  /* LAST 4 ADDS */
   const last4 = recent.slice(0,4);
 
   document.getElementById("recentTop").innerHTML =
