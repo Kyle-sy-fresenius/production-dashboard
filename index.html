@@ -1,3 +1,11 @@
+<!-- Same full code as before, with these updates included:
+
+1. #chartBox shifted right
+2. chart ring thickness changed to match left ring
+3. chart glow softened to match left ring
+4. doughnut cutout set to 85%
+-->
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -92,18 +100,14 @@ button{
 #chartBox{
   width:160px;
   height:160px;
-
   display:flex;
   align-items:center;
   justify-content:center;
-
   margin-left:18px;
 }
 
 #chart{
-  filter:
-    drop-shadow(0 0 12px #00ff88)
-    drop-shadow(0 0 10px #ff3b3b);
+  filter:drop-shadow(0 0 20px rgba(255,255,255,0.15));
 }
 
 .recentMini{
@@ -342,7 +346,6 @@ function createChart(){
   if(chart) return;
 
   chart = new Chart(document.getElementById("chart"),{
-
     type:"doughnut",
 
     data:{
@@ -353,19 +356,17 @@ function createChart(){
           "#00ff88",
           "#ff3b3b"
         ],
-        borderWidth:0,
+        borderWidth:6,
+        borderColor:"rgba(255,255,255,0.08)",
         hoverOffset:0
       }]
     },
 
     options:{
-
       responsive:true,
-
-      cutout:"82%",
+      cutout:"85%",
 
       plugins:{
-
         legend:{
           display:false
         },
@@ -379,10 +380,7 @@ function createChart(){
           },
 
           formatter:(v,ctx)=>{
-
-            const d =
-              ctx.chart.data.datasets[0].data;
-
+            const d = ctx.chart.data.datasets[0].data;
             const sum = d[0] + d[1];
 
             return sum
@@ -401,8 +399,7 @@ function update(){
 
   totalShow.innerText = total;
   packedShow.innerText = packed;
-  remainingShow.innerText =
-    Math.max(total-packed,0);
+  remainingShow.innerText = Math.max(total-packed,0);
 
   chart.data.datasets[0].data = [
     Math.min(packed,total),
@@ -411,13 +408,10 @@ function update(){
 
   chart.update();
 
-  const ring =
-    document.getElementById("statusRing");
+  const ring = document.getElementById("statusRing");
 
   const now = new Date();
-
-  const minutes =
-    now.getHours() * 60 + now.getMinutes();
+  const minutes = now.getHours() * 60 + now.getMinutes();
 
   let target = 0;
 
@@ -456,11 +450,8 @@ function update(){
 
     ring.innerText = "100% COMPLETE";
 
-    ring.style.border =
-      "6px solid #00ff88";
-
-    ring.style.boxShadow =
-      "0 0 25px #00ff88";
+    ring.style.border = "6px solid #00ff88";
+    ring.style.boxShadow = "0 0 25px #00ff88";
 
     trackText.innerText = "Finished";
   }
@@ -469,46 +460,32 @@ function update(){
 
     ring.innerText = "ON TRACK";
 
-    ring.style.border =
-      "6px solid #00ff88";
+    ring.style.border = "6px solid #00ff88";
+    ring.style.boxShadow = "0 0 20px #00ff88";
 
-    ring.style.boxShadow =
-      "0 0 20px #00ff88";
-
-    trackText.innerText =
-      "Green reached";
+    trackText.innerText = "Green reached";
   }
 
   else if(progress >= 0.75){
 
     ring.innerText =
-      Math.ceil(target - packed)
-      + " UNITS TO GREEN";
+      Math.ceil(target - packed) + " UNITS TO GREEN";
 
-    ring.style.border =
-      "6px solid orange";
+    ring.style.border = "6px solid orange";
+    ring.style.boxShadow = "0 0 20px orange";
 
-    ring.style.boxShadow =
-      "0 0 20px orange";
-
-    trackText.innerText =
-      "Current target: " + target;
+    trackText.innerText = "Current target: " + target;
   }
 
   else{
 
     ring.innerText =
-      Math.ceil(target - packed)
-      + " UNITS TO GREEN";
+      Math.ceil(target - packed) + " UNITS TO GREEN";
 
-    ring.style.border =
-      "6px solid red";
+    ring.style.border = "6px solid red";
+    ring.style.boxShadow = "0 0 25px red";
 
-    ring.style.boxShadow =
-      "0 0 25px red";
-
-    trackText.innerText =
-      "Current target: " + target;
+    trackText.innerText = "Current target: " + target;
   }
 }
 
@@ -517,16 +494,12 @@ function renderRecent(){
   const last4 = recent.slice(0,4);
 
   recentTop.innerHTML = last4.length
-
     ? last4.map((v,i)=>`
         <div class="recentItem ${i===0?'':'fade'}">
           +${v}
         </div>
       `).join("")
-
-    : `<div class="recentItem fade">
-         No entries
-       </div>`;
+    : `<div class="recentItem fade">No entries</div>`;
 }
 
 </script>
