@@ -1,11 +1,3 @@
-<!-- Same full code as before, with these updates included:
-
-1. #chartBox shifted right
-2. chart ring thickness changed to match left ring
-3. chart glow softened to match left ring
-4. doughnut cutout set to 85%
--->
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -107,7 +99,9 @@ button{
 }
 
 #chart{
-  filter:drop-shadow(0 0 20px rgba(255,255,255,0.15));
+  filter:
+    drop-shadow(0 0 12px rgba(0,170,255,0.45))
+    drop-shadow(0 0 10px rgba(255,59,59,0.35));
 }
 
 .recentMini{
@@ -346,16 +340,20 @@ function createChart(){
   if(chart) return;
 
   chart = new Chart(document.getElementById("chart"),{
-    type:"doughnut",
+
+    type:"pie",
 
     data:{
       labels:["Packed","Remaining"],
+
       datasets:[{
         data:[0,total],
+
         backgroundColor:[
-          "#00ff88",
+          "#00aaff",
           "#ff3b3b"
         ],
+
         borderWidth:6,
         borderColor:"rgba(255,255,255,0.08)",
         hoverOffset:0
@@ -363,10 +361,11 @@ function createChart(){
     },
 
     options:{
+
       responsive:true,
-      cutout:"85%",
 
       plugins:{
+
         legend:{
           display:false
         },
@@ -380,7 +379,10 @@ function createChart(){
           },
 
           formatter:(v,ctx)=>{
-            const d = ctx.chart.data.datasets[0].data;
+
+            const d =
+              ctx.chart.data.datasets[0].data;
+
             const sum = d[0] + d[1];
 
             return sum
@@ -399,7 +401,8 @@ function update(){
 
   totalShow.innerText = total;
   packedShow.innerText = packed;
-  remainingShow.innerText = Math.max(total-packed,0);
+  remainingShow.innerText =
+    Math.max(total-packed,0);
 
   chart.data.datasets[0].data = [
     Math.min(packed,total),
@@ -408,10 +411,13 @@ function update(){
 
   chart.update();
 
-  const ring = document.getElementById("statusRing");
+  const ring =
+    document.getElementById("statusRing");
 
   const now = new Date();
-  const minutes = now.getHours() * 60 + now.getMinutes();
+
+  const minutes =
+    now.getHours() * 60 + now.getMinutes();
 
   let target = 0;
 
