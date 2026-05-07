@@ -40,17 +40,15 @@ button{
   cursor:pointer;
 }
 
-/* ✅ TIGHTER FRAME LAYOUT */
 .frame{
   display:flex;
   justify-content:center;
-  gap:8px;   /* 👈 reduced gap */
+  gap:8px;
   margin-top:20px;
 }
 
-/* LEFT PANEL */
 .panel{
-  width:48%;   /* 👈 widened */
+  width:48%;
   height:260px;
   display:flex;
   flex-direction:column;
@@ -62,7 +60,6 @@ button{
   box-sizing:border-box;
 }
 
-/* STATUS RING */
 #statusRing{
   width:160px;
   height:160px;
@@ -78,9 +75,8 @@ button{
   transition:0.3s;
 }
 
-/* RIGHT PANEL */
 .centerPanel{
-  width:48%;   /* 👈 widened */
+  width:48%;
   height:260px;
   display:flex;
   align-items:center;
@@ -91,13 +87,11 @@ button{
   box-sizing:border-box;
 }
 
-/* PIE */
 #chartBox{
   width:180px;
   height:180px;
 }
 
-/* LAST 4 */
 .recentMini{
   text-align:left;
   font-size:14px;
@@ -114,13 +108,11 @@ button{
   opacity:0.5;
 }
 
-/* STATUS TEXT */
 #trackText{
   margin-top:10px;
   font-size:14px;
 }
 
-/* SUMMARY */
 #summaryScreen{
   display:none;
 }
@@ -139,13 +131,11 @@ button{
 
 <div class="card">
 
-<!-- START -->
 <div id="startScreen">
   <input id="totalInput" type="number" placeholder="Total units">
   <button onclick="start()">Start</button>
 </div>
 
-<!-- DASHBOARD -->
 <div id="mainScreen" style="display:none;">
 
 <div>Total: <span id="totalShow">0</span></div>
@@ -157,13 +147,11 @@ button{
 
 <div class="frame">
 
-<!-- LEFT -->
 <div class="panel">
   <div id="statusRing">--</div>
   <div id="trackText"></div>
 </div>
 
-<!-- RIGHT -->
 <div class="centerPanel">
 
   <div id="chartBox">
@@ -182,7 +170,6 @@ End Production
 
 </div>
 
-<!-- SUMMARY -->
 <div id="summaryScreen">
 
   <h2>Shift Summary</h2>
@@ -212,8 +199,8 @@ let recent=[];
 let chart;
 let started=false;
 
-/* LOAD */
 async function load(){
+
   const { data } = await sb
     .from("production_dashboard")
     .select("*")
@@ -222,8 +209,8 @@ async function load(){
 
   if(!data) return;
 
-  total = data.total;
-  packed = data.packed;
+  total = data.total || 0;
+  packed = data.packed || 0;
   recent = data.recent_adds || [];
 
   started = total > 0;
@@ -236,9 +223,12 @@ async function load(){
 
 load();
 
-/* START */
 function start(){
+
   total = parseFloat(totalInput.value);
+
+  if(isNaN(total) || total <= 0) return;
+
   packed = 0;
   recent = [];
   started = true;
@@ -250,10 +240,11 @@ function start(){
   renderRecent();
 }
 
-/* ADD */
 function add(){
+
   let v = parseFloat(addInput.value);
-  if(!v) return;
+
+  if(isNaN(v) || v <= 0) return;
 
   packed += v;
   recent.unshift(v);
@@ -261,13 +252,14 @@ function add(){
   if(recent.length > 50) recent.pop();
 
   addInput.value="";
+
   save();
   update();
   renderRecent();
 }
 
-/* SAVE */
 async function save(){
+
   await sb.from("production_dashboard").upsert({
     id:1,
     total,
@@ -276,15 +268,15 @@ async function save(){
   });
 }
 
-/* SHOW DASHBOARD */
 function showMain(){
+
   startScreen.style.display="none";
   mainScreen.style.display="block";
   summaryScreen.style.display="none";
 }
 
-/* END SHIFT */
 function endShift(){
+
   const password = prompt("Enter password:");
 
   const allowed = [
@@ -297,7 +289,9 @@ function endShift(){
     return;
   }
 
-  let percent = total ? ((packed/total)*100).toFixed(1) : 0;
+  let percent = total
+    ? ((packed/total)*100).toFixed(1)
+    : 0;
 
   sumPacked.innerText = packed;
   sumTotal.innerText = total;
@@ -307,35 +301,30 @@ function endShift(){
   summaryScreen.style.display="block";
 }
 
-/* RESET ONLY HERE */
-function backToDashboard(){
+async function backToDashboard(){
 
-  total=0;
-  packed=0;
-  recent=[];
-  started=false;
+  total = 0;
+  packed = 0;
+  recent = [];
+  started = false;
+
+  await sb.from("production_dashboard").upsert({
+    id:1,
+    total:0,
+    packed:0,
+    recent_adds:[]
+  });
 
   totalInput.value="";
   addInput.value="";
 
-  statusRing.innerText="--";
-  statusRing.style.border="6px solid rgba(255,255,255,0.2)";
-  statusRing.style.boxShadow="0 0 20px rgba(255,255,255,0.2)";
-
-  trackText.innerText="";
-  recentTop.innerHTML="";
-
-  if(chart){
-    chart.data.datasets[0].data=[0,0];
-    chart.update();
-  }
-
   summaryScreen.style.display="none";
+  mainScreen.style.display="none";
   startScreen.style.display="block";
 }
 
-/* CHART */
 function createChart(){
+
   if(chart) return;
 
   chart = new Chart(document.getElementById("chart"),{
@@ -355,7 +344,9 @@ function createChart(){
           formatter:(v,ctx)=>{
             const d = ctx.chart.data.datasets[0].data;
             const sum = d[0]+d[1];
-            return sum ? ((v/sum)*100).toFixed(0)+"%" : "0%";
+            return sum
+              ? ((v/sum)*100).toFixed(0)+"%"
+              : "0%";
           }
         }
       }
@@ -364,7 +355,6 @@ function createChart(){
   });
 }
 
-/* UPDATE */
 function update(){
 
   totalShow.innerText=total;
@@ -375,50 +365,96 @@ function update(){
     Math.min(packed,total),
     Math.max(total-packed,0)
   ];
-  chart.update();
 
-  const ratio = total ? packed/total : 0;
+  chart.update();
 
   const ring = document.getElementById("statusRing");
 
-  if(!started){
-    ring.innerText="--";
+  const now = new Date();
+  const minutes = now.getHours() * 60 + now.getMinutes();
+
+  let target = 0;
+
+  if(minutes >= 20 * 60){
+    target = 10000;
   }
-  else if(ratio >= 1){
-    ring.innerText="100% COMPLETE";
-    ring.style.border="6px solid #00ff88";
-    ring.style.boxShadow="0 0 25px #00ff88";
+  else if(minutes >= 15 * 60 + 30){
+    target = 5000;
   }
-  else if(ratio >= 0.8){
-    ring.innerText=Math.round(ratio*100)+"% ON TRACK";
-    ring.style.border="6px solid #00ff88";
-    ring.style.boxShadow="0 0 20px #00ff88";
+  else if(minutes >= 13 * 60){
+    target = 3500;
   }
-  else if(ratio >= 0.5){
-    ring.innerText=Math.round(ratio*100)+"% SLOW";
-    ring.style.border="6px solid orange";
-    ring.style.boxShadow="0 0 20px orange";
+  else if(minutes >= 11 * 60){
+    target = 2000;
   }
   else{
-    ring.innerText=Math.round(ratio*100)+"% CRITICAL";
-    ring.style.border="6px solid red";
-    ring.style.boxShadow="0 0 25px red";
+    target = 2000;
   }
 
-  trackText.innerText = started
-    ? (packed >= total
-        ? "On track"
-        : "Need " + (total-packed) + " units to finish")
-    : "";
+  const progress = packed / target;
+
+  if(!started){
+
+    ring.innerText="--";
+
+    ring.style.border="6px solid rgba(255,255,255,0.2)";
+    ring.style.boxShadow="0 0 20px rgba(255,255,255,0.2)";
+
+    trackText.innerText="";
+  }
+
+  else if(packed >= total && total > 0){
+
+    ring.innerText="100% COMPLETE";
+
+    ring.style.border="6px solid #00ff88";
+    ring.style.boxShadow="0 0 25px #00ff88";
+
+    trackText.innerText="Finished";
+  }
+
+  else if(progress >= 1){
+
+    ring.innerText="ON TRACK";
+
+    ring.style.border="6px solid #00ff88";
+    ring.style.boxShadow="0 0 20px #00ff88";
+
+    trackText.innerText="Goal met for this time";
+  }
+
+  else if(progress >= 0.75){
+
+    ring.innerText="SLOW";
+
+    ring.style.border="6px solid orange";
+    ring.style.boxShadow="0 0 20px orange";
+
+    trackText.innerText =
+      "Need " + Math.ceil(target - packed) + " more units";
+  }
+
+  else{
+
+    ring.innerText="CRITICAL";
+
+    ring.style.border="6px solid red";
+    ring.style.boxShadow="0 0 25px red";
+
+    trackText.innerText =
+      "Need " + Math.ceil(target - packed) + " more units";
+  }
 }
 
-/* RECENT */
 function renderRecent(){
+
   const last4 = recent.slice(0,4);
 
   recentTop.innerHTML = last4.length
     ? last4.map((v,i)=>`
-        <div class="recentItem ${i===0?'':'fade'}">+${v}</div>
+        <div class="recentItem ${i===0?'':'fade'}">
+          +${v}
+        </div>
       `).join("")
     : `<div class="recentItem fade">No entries</div>`;
 }
